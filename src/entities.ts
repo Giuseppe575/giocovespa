@@ -17,6 +17,10 @@ export function createRenderer(): THREE.WebGLRenderer {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
+  const canvas = renderer.domElement;
+  canvas.style.width = "100vw";
+  canvas.style.height = "100vh";
+  canvas.style.touchAction = "none";
   document.body.appendChild(renderer.domElement);
   return renderer;
 }

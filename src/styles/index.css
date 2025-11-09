@@ -12,6 +12,13 @@ body {
   color: #f4f4f4;
 }
 
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+}
+
 /* HUD */
 
 #hud {
@@ -182,6 +189,115 @@ body {
   opacity: 0.8;
 }
 
+#touch-controls {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 18px 28px;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+#touch-controls .touch-pad,
+#touch-controls .touch-buttons,
+#touch-controls .touch-button {
+  pointer-events: none;
+}
+
+#touch-controls.active {
+  opacity: 1;
+}
+
+#touch-controls.active .touch-pad,
+#touch-controls.active .touch-buttons,
+#touch-controls.active .touch-button {
+  pointer-events: auto;
+}
+
+.touch-pad {
+  flex: 1;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: radial-gradient(
+    circle at center,
+    rgba(40, 60, 84, 0.28),
+    rgba(6, 10, 16, 0.5)
+  );
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.6);
+  margin-bottom: 16px;
+  backdrop-filter: blur(8px);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.touch-pad::after {
+  content: "Trascina per sterzare";
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(240, 247, 255, 0.7);
+  padding-top: 18px;
+}
+
+.touch-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.touch-button {
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(25, 33, 46, 0.9), rgba(9, 12, 18, 0.95));
+  color: #f4f4f4;
+  font-size: 20px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  min-width: 60px;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.touch-button:active,
+.touch-button.is-active {
+  transform: translateY(2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.7);
+  background: linear-gradient(180deg, rgba(36, 46, 64, 0.95), rgba(12, 16, 24, 0.98));
+}
+
+.touch-button:focus {
+  outline: none;
+}
+
+.touch-button:focus-visible {
+  outline: 2px solid rgba(147, 197, 253, 0.7);
+}
+
+@media (pointer: coarse) {
+  #touch-controls {
+    display: flex;
+  }
+
+  .touch-buttons {
+    gap: 10px;
+  }
+
+  .touch-button {
+    font-size: 18px;
+    padding: 14px 18px;
+    min-width: 56px;
+  }
+}
+
 /* Responsive tweaks */
 
 @media (max-width: 600px) {
@@ -203,5 +319,13 @@ body {
   .panel h1,
   .panel h2 {
     font-size: 20px;
+  }
+
+  .touch-pad::after {
+    font-size: 11px;
+  }
+
+  .touch-buttons {
+    justify-content: space-between;
   }
 }

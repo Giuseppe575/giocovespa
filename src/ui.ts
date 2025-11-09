@@ -3,7 +3,7 @@ import { ScoreSystem, PERSISTENCE_KEYS } from "./definitions";
 import { persistence } from "./libs/persistence";
 import { now } from "./utils";
 
-type UIElements = {
+export type UIElements = {
   score: HTMLElement;
   speed: HTMLElement;
   streak: HTMLElement;
@@ -16,6 +16,11 @@ type UIElements = {
   finalScore: HTMLElement;
   bestScore: HTMLElement;
   muteBtn: HTMLButtonElement;
+  touchControls: HTMLElement | null;
+  touchPad: HTMLElement | null;
+  touchAccelerate: HTMLButtonElement | null;
+  touchBrake: HTMLButtonElement | null;
+  touchTurbo: HTMLButtonElement | null;
 };
 
 let ui: UIElements | null = null;
@@ -37,6 +42,13 @@ export async function initUI(): Promise<UIElements> {
     finalScore: qs("final-score"),
     bestScore: qs("best-score"),
     muteBtn: qs("mute-btn") as HTMLButtonElement,
+    touchControls: document.getElementById("touch-controls"),
+    touchPad: document.getElementById("touch-pad"),
+    touchAccelerate: document.getElementById(
+      "touch-accelerate"
+    ) as HTMLButtonElement | null,
+    touchBrake: document.getElementById("touch-brake") as HTMLButtonElement | null,
+    touchTurbo: document.getElementById("touch-turbo") as HTMLButtonElement | null,
   };
 
   const savedHigh = await persistence.getItem(PERSISTENCE_KEYS.HIGH_SCORE);
