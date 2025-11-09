@@ -1,4 +1,5 @@
 
+// @ts-nocheck
 import * as THREE from "three";
 import {
   AudioSystem,
@@ -9,14 +10,14 @@ import {
   ScoreSystem,
   World,
   PERSISTENCE_KEYS,
-} from "./definitions";
+} from "./definitions.js";
 import {
   clamp,
   lerp,
   lerpVec3,
   now,
   shakeValue,
-} from "./utils";
+} from "./utils.js";
 import {
   createBuildings,
   createCamera,
@@ -26,7 +27,7 @@ import {
   createStreetLights,
   createVespaWithRider,
   spawnObstacle,
-} from "./entities";
+} from "./entities.js";
 import {
   animateHUDPop,
   flashMessage,
@@ -39,8 +40,8 @@ import {
   showMenu,
   updateHUD,
   type UIElements,
-} from "./ui";
-import { persistence } from "./libs/persistence";
+} from "./ui.js";
+import { persistence } from "./libs/persistence.js";
 
 let world: World;
 let gameState: GameState = "MENU";

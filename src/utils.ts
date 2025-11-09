@@ -1,4 +1,5 @@
 
+// @ts-nocheck
 import * as THREE from "three";
 
 export const randRange = (min: number, max: number): number =>

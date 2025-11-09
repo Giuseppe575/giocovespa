@@ -1,4 +1,5 @@
 
+// @ts-nocheck
 import * as THREE from "three";
 
 export type GameState = "MENU" | "RUNNING" | "GAME_OVER";

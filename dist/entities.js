@@ -1,0 +1,369 @@
+// @ts-nocheck
+import * as THREE from "three";
+import { GAME_CONFIG } from "./definitions.js";
+import { choice, createBasicMetal, createEmissiveMaterial, createSoftBody, randRange, } from "./utils.js";
+export function createRenderer() {
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: false,
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    const canvas = renderer.domElement;
+    canvas.style.width = "100vw";
+    canvas.style.height = "100vh";
+    canvas.style.touchAction = "none";
+    document.body.appendChild(renderer.domElement);
+    return renderer;
+}
+export function createCamera() {
+    const camera = new THREE.PerspectiveCamera(GAME_CONFIG.fov, window.innerWidth / window.innerHeight, 0.1, 300);
+    return camera;
+}
+export function createScene() {
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(GAME_CONFIG.cityFogColor);
+    scene.fog = new THREE.Fog(GAME_CONFIG.cityFogColor, GAME_CONFIG.fogNear, GAME_CONFIG.fogFar);
+    return scene;
+}
+export function addLights(scene) {
+    const ambient = new THREE.AmbientLight(GAME_CONFIG.ambientColor, 0.9);
+    scene.add(ambient);
+    const hemi = new THREE.HemisphereLight(GAME_CONFIG.hemiColorSky, GAME_CONFIG.hemiColorGround, 0.6);
+    scene.add(hemi);
+    const dir = new THREE.DirectionalLight(GAME_CONFIG.sunColor, 1.1);
+    dir.position.set(-12, 25, 30);
+    dir.castShadow = true;
+    dir.shadow.mapSize.set(1024, 1024);
+    dir.shadow.camera.near = 5;
+    dir.shadow.camera.far = 80;
+    dir.shadow.camera.left = -40;
+    dir.shadow.camera.right = 40;
+    dir.shadow.camera.top = 40;
+    dir.shadow.camera.bottom = -40;
+    scene.add(dir);
+}
+/**
+ * Stylized Vespa 5 with rider.
+ * Low-poly, built from primitives but with good silhouette.
+ */
+export function createVespaWithRider() {
+    const group = new THREE.Group();
+    // Body
+    const bodyMat = createBasicMetal(0x1f7cff);
+    const floorMat = createBasicMetal(0x111111);
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 1.3), bodyMat);
+    chassis.position.set(0, 0.6, 0);
+    chassis.castShadow = true;
+    chassis.receiveShadow = true;
+    group.add(chassis);
+    const frontShield = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.18), bodyMat);
+    frontShield.position.set(0, 0.9, -0.45);
+    frontShield.castShadow = true;
+    group.add(frontShield);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.9), floorMat);
+    floor.position.set(0, 0.5, 0.1);
+    floor.castShadow = true;
+    floor.receiveShadow = true;
+    group.add(floor);
+    const rearSide = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.55, 0.7), bodyMat);
+    rearSide.position.set(0, 0.8, 0.5);
+    rearSide.castShadow = true;
+    group.add(rearSide);
+    // Seat
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.7), createSoftBody(0x111111));
+    seat.position.set(0, 1.05, 0.3);
+    seat.castShadow = true;
+    group.add(seat);
+    // Wheels
+    const wheelMat = createBasicMetal(0x111111);
+    const tireGeom = new THREE.CylinderGeometry(0.23, 0.23, 0.14, 16);
+    const frontWheel = new THREE.Mesh(tireGeom, wheelMat);
+    frontWheel.rotation.z = Math.PI / 2;
+    frontWheel.position.set(0, 0.32, -0.55);
+    frontWheel.castShadow = true;
+    const rearWheel = new THREE.Mesh(tireGeom, wheelMat);
+    rearWheel.rotation.z = Math.PI / 2;
+    rearWheel.position.set(0, 0.32, 0.55);
+    rearWheel.castShadow = true;
+    group.add(frontWheel, rearWheel);
+    // Handlebar
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.08, 0.08), bodyMat);
+    bar.position.set(0, 1.18, -0.45);
+    bar.castShadow = true;
+    group.add(bar);
+    const headlight = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.09, 20), createEmissiveMaterial(0xfff8d1, 3.2));
+    headlight.rotation.x = Math.PI / 2;
+    headlight.position.set(0, 1.2, -0.54);
+    headlight.castShadow = false;
+    group.add(headlight);
+    // Tail light
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.04), createEmissiveMaterial(0xff2640, 1.2));
+    tail.position.set(0, 0.9, 0.9);
+    group.add(tail);
+    // Rider (stylized human)
+    const skin = createSoftBody(0xf4c9a5);
+    const shirt = createSoftBody(0x202439);
+    const pants = createSoftBody(0x19191c);
+    const helmetMat = createSoftBody(0xffffff);
+    // Legs
+    const legGeom = new THREE.BoxGeometry(0.13, 0.45, 0.13);
+    const leftLeg = new THREE.Mesh(legGeom, pants);
+    leftLeg.position.set(-0.09, 0.8, 0.15);
+    const rightLeg = leftLeg.clone();
+    rightLeg.position.x = 0.09;
+    // Torso
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.42, 0.2), shirt);
+    torso.position.set(0, 1.25, 0.1);
+    // Arms
+    const armGeom = new THREE.BoxGeometry(0.11, 0.35, 0.11);
+    const leftArm = new THREE.Mesh(armGeom, shirt);
+    leftArm.position.set(-0.26, 1.3, -0.2);
+    const rightArm = leftArm.clone();
+    rightArm.position.x = 0.26;
+    // Head + helmet
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), skin);
+    head.position.set(0, 1.6, -0.02);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.14, 20, 20, 0, Math.PI * 2, 0, Math.PI / 1.2), helmetMat);
+    helmet.position.copy(head.position);
+    helmet.position.y += 0.01;
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.02), createSoftBody(0x1a3b4f));
+    visor.position.set(0, 1.58, -0.13);
+    [leftLeg, rightLeg, torso, leftArm, rightArm, head, helmet, visor].forEach((m) => {
+        m.castShadow = true;
+        group.add(m);
+    });
+    group.position.set(0, 0, -5);
+    group.traverse((obj) => {
+        if (obj.isMesh) {
+            obj.receiveShadow = true;
+        }
+    });
+    return group;
+}
+export function createRoad(scene) {
+    const segments = [];
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x151515,
+        roughness: 0.95,
+        metalness: 0.02,
+    });
+    const width = GAME_CONFIG.laneWidth * GAME_CONFIG.lanes + 3;
+    for (let z = -GAME_CONFIG.roadSegmentLength * 2; z > -GAME_CONFIG.roadLength; z -= GAME_CONFIG.roadSegmentLength) {
+        const geom = new THREE.BoxGeometry(width, 0.12, GAME_CONFIG.roadSegmentLength);
+        const mesh = new THREE.Mesh(geom, material);
+        mesh.position.set(0, 0, z);
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        segments.push(mesh);
+    }
+    // lane lines
+    const lineMat = new THREE.MeshStandardMaterial({
+        color: 0xf8f8f8,
+        roughness: 0.7,
+    });
+    const dashLength = 1.2;
+    const dashGap = 1;
+    const laneCount = GAME_CONFIG.lanes;
+    const laneWidth = GAME_CONFIG.laneWidth;
+    for (let lane = 1; lane < laneCount; lane++) {
+        const x = (lane - laneCount / 2) * laneWidth;
+        for (let i = 0; i < 120; i++) {
+            const geom = new THREE.BoxGeometry(0.08, 0.02, dashLength);
+            const mesh = new THREE.Mesh(geom, lineMat);
+            mesh.position.set(x, 0.07, -i * (dashLength + dashGap));
+            mesh.receiveShadow = false;
+            mesh.castShadow = false;
+            scene.add(mesh);
+            segments.push(mesh);
+        }
+    }
+    // Side sidewalks
+    const sideMat = new THREE.MeshStandardMaterial({
+        color: 0x22262b,
+        roughness: 0.9,
+    });
+    for (let i = 0; i < 40; i++) {
+        const geom = new THREE.BoxGeometry(2, 0.3, 5);
+        const left = new THREE.Mesh(geom, sideMat);
+        const right = new THREE.Mesh(geom, sideMat);
+        left.position.set(-width / 2 - 1, 0.15, -i * 5);
+        right.position.set(width / 2 + 1, 0.15, -i * 5);
+        left.receiveShadow = true;
+        right.receiveShadow = true;
+        scene.add(left, right);
+    }
+    return segments;
+}
+/**
+ * Create simple futuristic / Italian city-style buildings.
+ */
+export function createBuildings(scene, worldWidth) {
+    const buildings = [];
+    const colors = [0x1d2026, 0x151820, 0x101018, 0x181c26];
+    for (let side = -1; side <= 1; side += 2) {
+        for (let i = 0; i < 40; i++) {
+            const w = randRange(2.5, 4.5);
+            const h = randRange(3, 11);
+            const d = randRange(2.5, 4.5);
+            const geom = new THREE.BoxGeometry(w, h, d);
+            const mat = new THREE.MeshStandardMaterial({
+                color: choice(colors),
+                metalness: 0.35,
+                roughness: 0.85,
+            });
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.set(side * (worldWidth / 2 + 3 + randRange(0, 2)), h / 2, -i * 5 - randRange(0, 5));
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            buildings.push(mesh);
+            // some glowing windows
+            if (Math.random() > 0.5) {
+                const winCount = Math.floor(randRange(4, 12));
+                const emissiveMat = createEmissiveMaterial(0x4ad0ff, 0.4);
+                for (let j = 0; j < winCount; j++) {
+                    const wg = new THREE.BoxGeometry(0.18, 0.26, 0.02);
+                    const wmesh = new THREE.Mesh(wg, emissiveMat);
+                    const yy = randRange(1, h - 1);
+                    const zz = randRange(-d / 2 + 0.3, d / 2 - 0.3);
+                    const xx = side > 0 ? -w / 2 + 0.02 : w / 2 - 0.02;
+                    wmesh.position.set(xx, yy, zz);
+                    wmesh.castShadow = false;
+                    wmesh.receiveShadow = false;
+                    mesh.add(wmesh);
+                }
+            }
+        }
+    }
+    return buildings;
+}
+export function createStreetLights(scene, worldWidth) {
+    const lights = [];
+    const count = 40;
+    for (let i = 0; i < count; i++) {
+        const z = -i * 10 - 5;
+        for (const side of [-1, 1]) {
+            const pole = new THREE.Group();
+            const poleMat = createBasicMetal(0x393c42);
+            const lampMat = createEmissiveMaterial(0xfff2d1, 1.4);
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8), poleMat);
+            base.position.y = 0.2;
+            base.castShadow = true;
+            base.receiveShadow = true;
+            const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 10), poleMat);
+            stem.position.y = 1.9;
+            stem.castShadow = true;
+            stem.receiveShadow = true;
+            const arm = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.05), poleMat);
+            arm.position.set(side > 0 ? -0.35 : 0.35, 3.3, 0);
+            arm.castShadow = true;
+            const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 12), lampMat);
+            lamp.position.set(side > 0 ? -0.7 : 0.7, 3.3, 0);
+            lamp.castShadow = false;
+            pole.add(base, stem, arm, lamp);
+            const lightX = side * (worldWidth / 2 + 1.2);
+            pole.position.set(lightX, 0, z);
+            const l = new THREE.PointLight(0xfff2d1, 0.6, 18, 1.4);
+            l.position.set(lamp.position.x, lamp.position.y - 0.08, lamp.position.z);
+            pole.add(l);
+            scene.add(pole);
+            lights.push(pole);
+        }
+    }
+    return lights;
+}
+/**
+ * Simplified-but-cool car shapes as obstacles.
+ */
+function createCar() {
+    const car = new THREE.Group();
+    const bodyColor = Math.random() > 0.5 ? 0xff5733 : 0x1abc9c;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.35, 2), createSoftBody(bodyColor));
+    body.position.y = 0.4;
+    body.castShadow = true;
+    car.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.8), createSoftBody(0x111111));
+    cabin.position.set(0, 0.75, -0.1);
+    cabin.castShadow = true;
+    car.add(cabin);
+    const wheelGeom = new THREE.CylinderGeometry(0.22, 0.22, 0.15, 12);
+    const wheelMat = createBasicMetal(0x151515);
+    const wheelPositions = [
+        [-0.5, 0.22, -0.8],
+        [0.5, 0.22, -0.8],
+        [-0.5, 0.22, 0.8],
+        [0.5, 0.22, 0.8],
+    ];
+    wheelPositions.forEach(([x, y, z]) => {
+        const w = new THREE.Mesh(wheelGeom, wheelMat);
+        w.rotation.z = Math.PI / 2;
+        w.position.set(x, y, z);
+        w.castShadow = true;
+        car.add(w);
+    });
+    const headLights = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.04), createEmissiveMaterial(0xfffbd1, 1.6));
+    headLights.position.set(0.32, 0.4, -1.02);
+    car.add(headLights.clone(), headLights.clone().position.set(-0.32, 0.4, -1.02));
+    return car;
+}
+function createBarrier() {
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.4), createSoftBody(0xd0d3d8));
+    base.castShadow = true;
+    base.receiveShadow = true;
+    const stripes = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.22, 0.42), createSoftBody(0xff4f4f));
+    stripes.position.y = 0.16;
+    stripes.castShadow = true;
+    group.add(base, stripes);
+    return group;
+}
+function createCone() {
+    const group = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.06, 16), createSoftBody(0xffffff));
+    base.position.y = 0.03;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 16), createSoftBody(0xff7a1b));
+    cone.position.y = 0.27;
+    cone.castShadow = true;
+    base.castShadow = true;
+    group.add(base, cone);
+    return group;
+}
+export function spawnObstacle(world, zSpawn) {
+    const type = choice(["CAR", "BARRIER", "CONE"]);
+    let mesh;
+    let length = 2;
+    if (type === "CAR") {
+        mesh = createCar();
+        length = 3;
+    }
+    else if (type === "BARRIER") {
+        mesh = createBarrier();
+        length = 1.6;
+    }
+    else {
+        mesh = createCone();
+        length = 0.6;
+    }
+    const laneIndex = Math.floor(Math.random() * GAME_CONFIG.lanes);
+    const laneOffset = (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
+    mesh.position.set(laneOffset, 0, zSpawn);
+    mesh.traverse((obj) => {
+        if (obj.isMesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+        }
+    });
+    world.scene.add(mesh);
+    const obstacle = {
+        mesh,
+        type,
+        laneOffset,
+        length,
+        passed: false,
+        awarded: false,
+    };
+    world.obstacles.push(obstacle);
+    return obstacle;
+}

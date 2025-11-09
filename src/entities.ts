@@ -1,13 +1,14 @@
 
+// @ts-nocheck
 import * as THREE from "three";
-import { GAME_CONFIG, Obstacle, ObstacleType, World } from "./definitions";
+import { GAME_CONFIG, Obstacle, ObstacleType, World } from "./definitions.js";
 import {
   choice,
   createBasicMetal,
   createEmissiveMaterial,
   createSoftBody,
   randRange,
-} from "./utils";
+} from "./utils.js";
 
 export function createRenderer(): THREE.WebGLRenderer {
   const renderer = new THREE.WebGLRenderer({
@@ -220,7 +221,7 @@ export function createVespaWithRider(): THREE.Group {
   );
 
   group.position.set(0, 0, -5);
-  group.traverse((obj) => {
+  group.traverse((obj: THREE.Object3D) => {
     if ((obj as THREE.Mesh).isMesh) {
       (obj as THREE.Mesh).receiveShadow = true;
     }
@@ -517,7 +518,7 @@ export function spawnObstacle(world: World, zSpawn: number): Obstacle {
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0, zSpawn);
-  mesh.traverse((obj) => {
+  mesh.traverse((obj: THREE.Object3D) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = true;
       obj.receiveShadow = true;

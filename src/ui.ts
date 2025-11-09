@@ -1,7 +1,7 @@
 
-import { ScoreSystem, PERSISTENCE_KEYS } from "./definitions";
-import { persistence } from "./libs/persistence";
-import { now } from "./utils";
+import { ScoreSystem, PERSISTENCE_KEYS } from "./definitions.js";
+import { persistence } from "./libs/persistence.js";
+import { now } from "./utils.js";
 
 export type UIElements = {
   score: HTMLElement;
