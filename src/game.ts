@@ -38,6 +38,7 @@ import {
   showGameOver,
   showMenu,
   updateHUD,
+  type UIElements,
 } from "./ui";
 import { persistence } from "./libs/persistence";
 
@@ -70,6 +71,25 @@ let lastTime = now();
 let turboTimeLeft = 0;
 let gameOverCooldown = 0;
 let cameraShakeIntensity = 0;
+
+function steerPlayer(normalizedX: number, lerpFactor: number) {
+  if (!world || gameState !== "RUNNING") return;
+  const clamped = THREE.MathUtils.clamp(normalizedX, -1, 1);
+  world.player.mesh.position.x = THREE.MathUtils.lerp(
+    world.player.mesh.position.x,
+    clamped * GAME_CONFIG.laneWidth,
+    lerpFactor
+  );
+}
+
+function tryResumeAudioContext() {
+  if (!audio.context) return;
+  if (audio.context.state === "suspended") {
+    audio.context.resume().catch(() => {
+      /* noop */
+    });
+  }
+}
 
 async function initAudio() {
   audio.context = new (window.AudioContext ||
@@ -239,6 +259,14 @@ function addLights(scene: THREE.Scene) {
 }
 
 function addEventListeners() {
+  const unlockAudio = () => {
+    tryResumeAudioContext();
+    window.removeEventListener("touchstart", unlockAudio);
+    window.removeEventListener("pointerdown", unlockAudio);
+  };
+  window.addEventListener("touchstart", unlockAudio, { passive: true });
+  window.addEventListener("pointerdown", unlockAudio, { passive: true });
+
   window.addEventListener("keydown", (e) => {
     if (e.code === "ArrowLeft" || e.code === "KeyA") input.left = true;
     if (e.code === "ArrowRight" || e.code === "KeyD") input.right = true;
@@ -246,6 +274,7 @@ function addEventListeners() {
     if (e.code === "ArrowDown" || e.code === "KeyS") input.down = true;
     if (e.code === "Space") {
       input.turbo = true;
+      tryResumeAudioContext();
       if (gameState === "MENU") {
         startRun();
       } else if (gameState === "GAME_OVER" && gameOverCooldown <= 0) {
@@ -267,30 +296,47 @@ function addEventListeners() {
 
   // Mouse / touch steering
   window.addEventListener("mousemove", (e) => {
-    if (!world || gameState !== "RUNNING") return;
     const xNorm = (e.clientX / window.innerWidth) * 2 - 1;
-    world.player.mesh.position.x = THREE.MathUtils.lerp(
-      world.player.mesh.position.x,
-      xNorm * (GAME_CONFIG.laneWidth),
-      0.06
-    );
+    steerPlayer(xNorm, 0.06);
   });
 
-  window.addEventListener("touchmove", (e) => {
-    if (!world || gameState !== "RUNNING") return;
-    const touch = e.touches[0];
+  const steerFromTouch = (touch: Touch | null, lerpFactor: number, evt: TouchEvent) => {
+    if (!touch) return;
     const xNorm = (touch.clientX / window.innerWidth) * 2 - 1;
-    world.player.mesh.position.x = THREE.MathUtils.lerp(
-      world.player.mesh.position.x,
-      xNorm * (GAME_CONFIG.laneWidth),
-      0.12
-    );
-  });
+    steerPlayer(xNorm, lerpFactor);
+    if (gameState === "RUNNING") {
+      evt.preventDefault();
+    }
+  };
+
+  window.addEventListener(
+    "touchstart",
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("#touch-controls")) return;
+      steerFromTouch(e.touches[0] ?? null, 0.12, e);
+    },
+    { passive: false }
+  );
+
+  window.addEventListener(
+    "touchmove",
+    (e) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.("#touch-controls")) return;
+      steerFromTouch(e.touches[0] ?? null, 0.12, e);
+    },
+    { passive: false }
+  );
 
   // Buttons
   document.addEventListener("DOMContentLoaded", async () => {
     const ui = await initUI();
-    ui.playBtn.onclick = () => startRun();
+    setupTouchControls(ui);
+    ui.playBtn.onclick = () => {
+      tryResumeAudioContext();
+      startRun();
+    };
     ui.restartBtn.onclick = () => {
       if (gameOverCooldown <= 0) restart();
     };
@@ -302,12 +348,222 @@ function addEventListeners() {
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
       } else {
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0");
+        tryResumeAudioContext();
       }
     };
   });
 }
 
+type TouchControlsElement = HTMLElement & {
+  __releaseTouchInputs?: () => void;
+};
+
+function setupTouchControls(ui: UIElements) {
+  if (!ui.touchControls) return;
+  const touchControlsEl = ui.touchControls as TouchControlsElement;
+  if (touchControlsEl.dataset.initialized === "1") return;
+  touchControlsEl.dataset.initialized = "1";
+
+  const coarseQuery = window.matchMedia("(pointer: coarse)");
+  const releases: Array<() => void> = [];
+
+  const releaseInputs = () => {
+    releases.forEach((release) => release());
+    input.left = false;
+    input.right = false;
+    input.up = false;
+    input.down = false;
+    input.turbo = false;
+  };
+
+  touchControlsEl.__releaseTouchInputs = releaseInputs;
+
+  const updateVisibility = () => {
+    if (coarseQuery.matches) {
+      touchControlsEl.classList.add("active");
+    } else {
+      touchControlsEl.classList.remove("active");
+      releaseInputs();
+    }
+  };
+
+  updateVisibility();
+
+  const queryListener = () => updateVisibility();
+  if (typeof coarseQuery.addEventListener === "function") {
+    coarseQuery.addEventListener("change", queryListener);
+  } else if (typeof coarseQuery.addListener === "function") {
+    coarseQuery.addListener(queryListener);
+  }
+
+  const bindTouchButton = (
+    element: HTMLElement,
+    onPress: () => void,
+    onRelease: () => void
+  ): (() => void) => {
+    let active = false;
+
+    const press = () => {
+      if (active || !coarseQuery.matches) return;
+      active = true;
+      element.classList.add("is-active");
+      tryResumeAudioContext();
+      onPress();
+    };
+
+    const release = () => {
+      if (!active) return;
+      active = false;
+      element.classList.remove("is-active");
+      onRelease();
+    };
+
+    if (window.PointerEvent) {
+      element.addEventListener("pointerdown", (event) => {
+        const pointerEvent = event as PointerEvent;
+        if (
+          pointerEvent.pointerType !== "touch" &&
+          pointerEvent.pointerType !== "pen"
+        ) {
+          return;
+        }
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        press();
+        if (element.setPointerCapture) {
+          try {
+            element.setPointerCapture(pointerEvent.pointerId);
+          } catch (err) {
+            // Ignore if pointer capture fails (e.g., Safari quirks).
+          }
+        }
+      });
+      const pointerRelease = (event: Event) => {
+        const pointerEvent = event as PointerEvent;
+        if (
+          pointerEvent.pointerType !== "touch" &&
+          pointerEvent.pointerType !== "pen"
+        ) {
+          return;
+        }
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        release();
+      };
+      element.addEventListener("pointerup", pointerRelease);
+      element.addEventListener("pointercancel", pointerRelease);
+      element.addEventListener("pointerleave", pointerRelease);
+    } else {
+      element.addEventListener(
+        "touchstart",
+        (event) => {
+          if (event.cancelable) {
+            event.preventDefault();
+          }
+          press();
+        },
+        { passive: false }
+      );
+      const touchRelease = (event: Event) => {
+        if (event.cancelable) {
+          event.preventDefault();
+        }
+        release();
+      };
+      element.addEventListener("touchend", touchRelease, { passive: false });
+      element.addEventListener("touchcancel", touchRelease, { passive: false });
+    }
+
+    element.addEventListener("contextmenu", (event) => event.preventDefault());
+    element.addEventListener("click", (event) => event.preventDefault());
+
+    return release;
+  };
+
+  if (ui.touchPad) {
+    const pad = ui.touchPad;
+    const handlePadTouch = (event: TouchEvent) => {
+      if (!coarseQuery.matches) return;
+      const touch = event.touches[0] ?? event.changedTouches?.[0] ?? null;
+      if (!touch) return;
+      const rect = pad.getBoundingClientRect();
+      if (!rect.width) return;
+      const relative = (touch.clientX - rect.left) / rect.width;
+      const normalized = relative * 2 - 1;
+      steerPlayer(normalized, 0.22);
+      if (gameState === "RUNNING") {
+        event.preventDefault();
+      }
+    };
+    pad.addEventListener("touchstart", handlePadTouch, { passive: false });
+    pad.addEventListener("touchmove", handlePadTouch, { passive: false });
+    pad.addEventListener("touchend", (event) => {
+      if (gameState === "RUNNING") {
+        event.preventDefault();
+      }
+    });
+    pad.addEventListener("contextmenu", (event) => event.preventDefault());
+  }
+
+  if (ui.touchAccelerate) {
+    releases.push(
+      bindTouchButton(
+        ui.touchAccelerate,
+        () => {
+          input.up = true;
+        },
+        () => {
+          input.up = false;
+        }
+      )
+    );
+  }
+
+  if (ui.touchBrake) {
+    releases.push(
+      bindTouchButton(
+        ui.touchBrake,
+        () => {
+          input.down = true;
+        },
+        () => {
+          input.down = false;
+        }
+      )
+    );
+  }
+
+  if (ui.touchTurbo) {
+    releases.push(
+      bindTouchButton(
+        ui.touchTurbo,
+        () => {
+          input.turbo = true;
+          if (gameState === "MENU") {
+            startRun();
+          } else if (gameState === "GAME_OVER" && gameOverCooldown <= 0) {
+            restart();
+          }
+        },
+        () => {
+          input.turbo = false;
+        }
+      )
+    );
+  }
+}
+
 function resetGameState() {
+  input.left = false;
+  input.right = false;
+  input.up = false;
+  input.down = false;
+  input.turbo = false;
+  const ui = getUI();
+  const touchControlsEl = ui?.touchControls as TouchControlsElement | null | undefined;
+  touchControlsEl?.__releaseTouchInputs?.();
   scoreSystem.score = 0;
   scoreSystem.distance = 0;
   scoreSystem.combo = 1;
@@ -333,6 +589,7 @@ function resetGameState() {
 
 function startRun() {
   if (!world) return;
+  tryResumeAudioContext();
   hideMenu();
   hideGameOver();
   resetGameState();
