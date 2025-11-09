@@ -1,0 +1,62 @@
+
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vespa City Ride 3D</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+      }
+    </style>
+    <script type="module" crossorigin src="/giocovespa/assets/index-D1qHbvSU.js"></script>
+    <link rel="stylesheet" crossorigin href="/giocovespa/assets/index-CV-Kyccj.css">
+  </head>
+  <body>
+    <div id="hud">
+      <div class="hud-left">
+        <div id="score-label" class="hud-label">PUNTI</div>
+        <div id="score-value" class="hud-value">0</div>
+        <div id="speed-label" class="hud-label">VELOCITÀ</div>
+        <div id="speed-value" class="hud-value">0 km/h</div>
+        <div id="streak-label" class="hud-label">SERIE</div>
+        <div id="streak-value" class="hud-value">x0</div>
+      </div>
+      <div class="hud-center">
+        <div id="message" class="hud-message"></div>
+      </div>
+      <div class="hud-right">
+        <div id="highscore-label" class="hud-label">RECORD</div>
+        <div id="highscore-value" class="hud-value">0</div>
+        <button id="mute-btn" class="hud-button">🔊</button>
+      </div>
+    </div>
+
+    <div id="menu-overlay" class="overlay visible">
+      <div class="panel">
+        <h1>Vespa City Ride 3D</h1>
+        <p>Guida la tua Vespa 5 attraverso la città, evita auto e ostacoli e colleziona punti.</p>
+        <ul class="hint-list">
+          <li>← → / A D: sterza</li>
+          <li>W / ↑: accelera</li>
+          <li>S / ↓: rallenta</li>
+          <li>Spazio: turbo istantaneo (se carico)</li>
+        </ul>
+        <p class="note">Sopravvivi il più a lungo possibile senza collisioni per aumentare il moltiplicatore.</p>
+        <button id="play-btn">GIOCA</button>
+      </div>
+    </div>
+
+    <div id="game-over-overlay" class="overlay">
+      <div class="panel">
+        <h2>Collisione!</h2>
+        <p id="final-score">Punteggio: 0</p>
+        <p id="best-score">Record: 0</p>
+        <button id="restart-btn">RIPROVA</button>
+      </div>
+    </div>
+
+  </body>
+</html>
