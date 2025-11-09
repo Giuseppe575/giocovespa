@@ -79,6 +79,92 @@
       </div>
     </div>
 
-    <script type="module" src="./dist/main.js"></script>
+    <script type="module">
+      const ENTRY_MODULE = "./dist/main.js";
+
+      const RELATIVE_IMPORT = /\bfrom\s+["']([^"']+)["']/g;
+
+      const isRelativeSpecifier = (specifier) => specifier.startsWith(".");
+
+      const toAbsoluteUrl = (base, specifier) => new URL(specifier, base).href;
+
+      const escapeForRegex = (value) =>
+        value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      const moduleCache = new Map();
+
+      const loadModuleAsBlob = async (moduleUrl) => {
+        const absoluteUrl = toAbsoluteUrl(window.location.href, moduleUrl);
+
+        if (moduleCache.has(absoluteUrl)) {
+          return moduleCache.get(absoluteUrl);
+        }
+
+        const response = await fetch(absoluteUrl);
+        if (!response.ok) {
+          throw new Error(
+            `Impossibile caricare il modulo ${absoluteUrl}: ${response.status} ${response.statusText}`
+          );
+        }
+
+        const sourceCode = await response.text();
+
+        RELATIVE_IMPORT.lastIndex = 0;
+        const dependencies = [];
+        let match;
+
+        while ((match = RELATIVE_IMPORT.exec(sourceCode)) !== null) {
+          const specifier = match[1];
+          if (!isRelativeSpecifier(specifier)) continue;
+
+          const resolvedUrl = toAbsoluteUrl(absoluteUrl, specifier);
+          dependencies.push({ specifier, resolvedUrl });
+        }
+
+        for (const dependency of dependencies) {
+          dependency.blobUrl = await loadModuleAsBlob(dependency.resolvedUrl);
+        }
+
+        let transformedCode = sourceCode;
+        for (const dependency of dependencies) {
+          const pattern = new RegExp(
+            `from\\s+(['"])${escapeForRegex(dependency.specifier)}\\1`,
+            "g"
+          );
+          transformedCode = transformedCode.replace(
+            pattern,
+            `from "${dependency.blobUrl}"`
+          );
+        }
+
+        const blobUrl = URL.createObjectURL(
+          new Blob([transformedCode], { type: "text/javascript" })
+        );
+
+        moduleCache.set(absoluteUrl, blobUrl);
+        return blobUrl;
+      };
+
+      try {
+        await import(ENTRY_MODULE);
+      } catch (error) {
+        console.warn(
+          "Caricamento del modulo fallito, uso del fallback inline.",
+          error
+        );
+
+        try {
+          const entryBlobUrl = await loadModuleAsBlob(ENTRY_MODULE);
+          await import(entryBlobUrl);
+        } catch (fallbackError) {
+          console.error("Impossibile avviare il gioco.", fallbackError);
+          const messageElement = document.getElementById("message");
+          if (messageElement) {
+            messageElement.textContent =
+              "Caricamento del gioco non riuscito. Controlla la connessione o ricarica la pagina.";
+          }
+        }
+      }
+    </script>
   </body>
 </html>
