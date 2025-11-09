@@ -449,7 +449,11 @@ function createCar(): THREE.Group {
     createEmissiveMaterial(0xfffbd1, 1.6)
   );
   headLights.position.set(0.32, 0.4, -1.02);
-  car.add(headLights.clone(), headLights.clone().position.set(-0.32, 0.4, -1.02));
+
+  const headLightsLeft = headLights.clone();
+  headLightsLeft.position.set(-0.32, 0.4, -1.02);
+
+  car.add(headLights, headLightsLeft);
 
   return car;
 }
@@ -492,23 +496,72 @@ function createCone(): THREE.Group {
   return group;
 }
 
-export function spawnObstacle(world: World, zSpawn: number): Obstacle {
+export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: number[] = []): Obstacle {
   const type: ObstacleType = choice(["CAR", "BARRIER", "CONE"]);
   let mesh: THREE.Group;
   let length = 2;
+  let collisionRadius = 2.0;
 
   if (type === "CAR") {
     mesh = createCar();
     length = 3;
+    collisionRadius = 1.8; // Cars are big
   } else if (type === "BARRIER") {
     mesh = createBarrier();
     length = 1.6;
+    collisionRadius = 1.4; // Barriers are medium
   } else {
     mesh = createCone();
     length = 0.6;
+    collisionRadius = 0.8; // Cones are SMALL - much smaller collision
   }
 
-  const laneIndex = Math.floor(Math.random() * GAME_CONFIG.lanes);
+  // Find which lanes are COMPLETELY FREE in a large area ahead
+  const checkDistance = 35; // Large area to check
+  const laneOccupancy = new Map<number, number>(); // lane -> number of obstacles
+
+  // Initialize all lanes as free
+  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    laneOccupancy.set(i, 0);
+  }
+
+  // Check all existing obstacles
+  for (const obstacle of world.obstacles) {
+    const obstacleZ = obstacle.mesh.position.z;
+    // Only check obstacles that are ahead of spawn position
+    if (obstacleZ < zSpawn && obstacleZ > zSpawn - checkDistance) {
+      const lane = obstacle.laneIndex;
+      laneOccupancy.set(lane, (laneOccupancy.get(lane) || 0) + 1);
+    }
+  }
+
+  // Get completely free lanes (zero obstacles)
+  const freeLanes: number[] = [];
+  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (laneOccupancy.get(i) === 0) {
+      freeLanes.push(i);
+    }
+  }
+
+  let laneIndex: number;
+  if (freeLanes.length > 0) {
+    // Pick a random free lane
+    laneIndex = freeLanes[Math.floor(Math.random() * freeLanes.length)];
+    console.log(`Spawning in FREE lane ${laneIndex}. Free lanes: [${freeLanes.join(', ')}]`);
+  } else {
+    // If no completely free lanes, pick the least occupied
+    let minOccupancy = Infinity;
+    laneIndex = 0;
+    for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+      const occupancy = laneOccupancy.get(i) || 0;
+      if (occupancy < minOccupancy) {
+        minOccupancy = occupancy;
+        laneIndex = i;
+      }
+    }
+    console.log(`No free lanes! Using least occupied lane ${laneIndex} (${minOccupancy} obstacles)`);
+  }
+
   const laneOffset =
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
@@ -526,7 +579,9 @@ export function spawnObstacle(world: World, zSpawn: number): Obstacle {
     mesh,
     type,
     laneOffset,
+    laneIndex,
     length,
+    collisionRadius,
     passed: false,
     awarded: false,
   };

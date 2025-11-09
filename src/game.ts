@@ -66,6 +66,7 @@ let audio: AudioSystem = {
 };
 
 let lastSpawnZ = -25;
+let lastSpawnedLanes: number[] = []; // Track last spawned lanes to avoid blocking all lanes
 let lastTime = now();
 let turboTimeLeft = 0;
 let gameOverCooldown = 0;
@@ -208,6 +209,25 @@ export async function initGame() {
     scoreSystem.highScore = parseFloat(hs);
   }
 
+  // Setup button handlers
+  const ui = getUI();
+  if (ui) {
+    ui.playBtn.onclick = () => startRun();
+    ui.restartBtn.onclick = () => {
+      if (gameOverCooldown <= 0) restart();
+    };
+    ui.muteBtn.onclick = async () => {
+      audio.muted = !audio.muted;
+      ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
+      if (audio.muted) {
+        if (audio.engineGain) audio.engineGain.gain.value = 0;
+        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
+      } else {
+        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0");
+      }
+    };
+  }
+
   resetGameState();
   showMenu();
 
@@ -287,24 +307,6 @@ function addEventListeners() {
     );
   });
 
-  // Buttons
-  document.addEventListener("DOMContentLoaded", async () => {
-    const ui = await initUI();
-    ui.playBtn.onclick = () => startRun();
-    ui.restartBtn.onclick = () => {
-      if (gameOverCooldown <= 0) restart();
-    };
-    ui.muteBtn.onclick = async () => {
-      audio.muted = !audio.muted;
-      ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-      if (audio.muted) {
-        if (audio.engineGain) audio.engineGain.gain.value = 0;
-        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
-      } else {
-        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0");
-      }
-    };
-  });
 }
 
 function resetGameState() {
@@ -328,6 +330,7 @@ function resetGameState() {
   world.player.mesh.rotation.set(0, 0, 0);
 
   lastSpawnZ = -25;
+  lastSpawnedLanes = []; // Reset lane tracking
   lastTime = now();
 }
 
@@ -467,8 +470,11 @@ function updateObstacles(dt: number) {
   });
 
   // Spawn new obstacles ahead of player
+  // IMPORTANT: Limit max obstacles on screen to ensure playability
+  const MAX_OBSTACLES = 4; // Only allow 4 obstacles at a time
+
   const forwardZ = cameraZ - GAME_CONFIG.spawnDistanceMax;
-  if (lastSpawnZ > forwardZ) {
+  if (lastSpawnZ > forwardZ && world.obstacles.length < MAX_OBSTACLES) {
     const spawnZ =
       cameraZ -
       (GAME_CONFIG.spawnDistanceMin +
@@ -476,7 +482,15 @@ function updateObstacles(dt: number) {
           (GAME_CONFIG.spawnDistanceMax -
             GAME_CONFIG.spawnDistanceMin));
     lastSpawnZ = spawnZ;
-    spawnObstacle(world, spawnZ);
+
+    console.log(`Attempting to spawn obstacle. Current count: ${world.obstacles.length}/${MAX_OBSTACLES}`);
+    const spawnedObstacle = spawnObstacle(world, spawnZ, lastSpawnedLanes);
+
+    // Track last 3 spawned lanes to ensure variety
+    lastSpawnedLanes.push(spawnedObstacle.laneIndex);
+    if (lastSpawnedLanes.length > 2) {
+      lastSpawnedLanes.shift();
+    }
   }
 
   // Move cars slightly or keep static; cleanup passed obstacles
@@ -484,7 +498,9 @@ function updateObstacles(dt: number) {
     const o = world.obstacles[i];
     o.mesh.position.z += dz;
 
-    if (o.mesh.position.z > cameraZ + GAME_CONFIG.obstacleCleanupZ) {
+    // More aggressive cleanup - remove obstacles that are behind the player
+    if (o.mesh.position.z > p.mesh.position.z + 10) {
+      console.log(`Removing obstacle behind player at z=${o.mesh.position.z.toFixed(2)}`);
       world.scene.remove(o.mesh);
       world.obstacles.splice(i, 1);
       continue;
@@ -499,6 +515,15 @@ function updateObstacles(dt: number) {
       const ui = getUI();
       if (ui) animateHUDPop(ui.streak, 0.16, 1.15);
     }
+  }
+
+  // Debug: log all obstacle positions
+  if (Math.random() < 0.02) { // Log occasionally
+    console.log(`Active obstacles: ${world.obstacles.length}`);
+    world.obstacles.forEach((o, i) => {
+      const relZ = o.mesh.position.z - p.mesh.position.z;
+      console.log(`  [${i}] lane=${o.laneIndex}, x=${o.mesh.position.x.toFixed(2)}, relZ=${relZ.toFixed(2)}`);
+    });
   }
 }
 
@@ -518,16 +543,28 @@ function checkCollisions() {
   const px = p.mesh.position.x;
   const pz = p.mesh.position.z;
 
-  const radius = GAME_CONFIG.obstacleSafeRadius;
-
   for (const o of world.obstacles) {
     const oz = o.mesh.position.z;
-    if (Math.abs(oz - pz) > radius * 2.2) continue;
+    const relZ = oz - pz;
+
+    // Use the obstacle's specific collision radius
+    const radius = o.collisionRadius;
+
+    // Only check obstacles that are close in Z axis
+    if (Math.abs(relZ) > radius * 2.5) continue;
+
     const ox = o.mesh.position.x;
     const dx = px - ox;
     const dz = pz - oz;
     const distSq = dx * dx + dz * dz;
+    const dist = Math.sqrt(distSq);
+
     if (distSq < radius * radius) {
+      console.error(`COLLISION DETECTED!`);
+      console.error(`  Player: x=${px.toFixed(2)}, z=${pz.toFixed(2)}`);
+      console.error(`  Obstacle: x=${ox.toFixed(2)}, z=${oz.toFixed(2)}, lane=${o.laneIndex}, type=${o.type}`);
+      console.error(`  Distance: ${dist.toFixed(2)} (threshold: ${radius.toFixed(2)} for ${o.type})`);
+      console.error(`  Relative Z: ${relZ.toFixed(2)}`);
       triggerGameOver();
       return;
     }

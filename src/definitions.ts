@@ -29,7 +29,9 @@ export type Obstacle = {
   mesh: THREE.Group;
   type: ObstacleType;
   laneOffset: number;
+  laneIndex: number;
   length: number;
+  collisionRadius: number;
   passed: boolean;
   awarded: boolean;
 };
@@ -69,8 +71,8 @@ export const GAME_CONFIG = {
   laneWidth: 2.4,
   roadLength: 200,
   roadSegmentLength: 20,
-  spawnDistanceMin: 30,
-  spawnDistanceMax: 65,
+  spawnDistanceMin: 60,
+  spawnDistanceMax: 100,
   obstacleCleanupZ: 15,
   baseSpeed: 18,
   maxSpeed: 52,
@@ -80,7 +82,7 @@ export const GAME_CONFIG = {
   turboDuration: 0.5,
   turboRechargeRate: 0.12,
   comboTimeout: 2.1,
-  obstacleSafeRadius: 3.2,
+  obstacleSafeRadius: 2.0,
   cameraBaseOffset: new THREE.Vector3(0, 3.5, 8.2),
   cameraLookAt: new THREE.Vector3(0, 1.5, -6),
   fov: 60,
