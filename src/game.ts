@@ -364,7 +364,7 @@ function addEventListeners() {
   );
 
   // Buttons
-  document.addEventListener("DOMContentLoaded", async () => {
+  const setupUIBindings = async () => {
     const ui = await initUI();
     await loadAudioPreferences();
     updateMuteButtonUI();
@@ -387,7 +387,19 @@ function addEventListeners() {
         tryResumeAudioContext();
       }
     };
-  });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => {
+        void setupUIBindings();
+      },
+      { once: true }
+    );
+  } else {
+    void setupUIBindings();
+  }
 }
 
 type TouchControlsElement = HTMLElement & {
