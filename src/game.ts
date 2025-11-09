@@ -67,6 +67,9 @@ let audio: AudioSystem = {
   lastWhooshTime: 0,
 };
 
+let audioInitPromise: Promise<void> | null = null;
+let audioPreferencesPromise: Promise<void> | null = null;
+
 let lastSpawnZ = -25;
 let lastTime = now();
 let turboTimeLeft = 0;
@@ -83,16 +86,48 @@ function steerPlayer(normalizedX: number, lerpFactor: number) {
   );
 }
 
-function tryResumeAudioContext() {
-  if (!audio.context) return;
-  if (audio.context.state === "suspended") {
-    audio.context.resume().catch(() => {
-      /* noop */
-    });
+function updateMuteButtonUI() {
+  const ui = getUI();
+  if (ui) {
+    ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
   }
 }
 
+async function loadAudioPreferences() {
+  if (!audioPreferencesPromise) {
+    audioPreferencesPromise = (async () => {
+      const muteStored = await persistence.getItem(PERSISTENCE_KEYS.MUTE);
+      audio.muted = muteStored === "1";
+    })();
+  }
+  await audioPreferencesPromise;
+}
+
+function ensureAudioInitialized(): Promise<void> {
+  if (!audioInitPromise) {
+    audioInitPromise = (async () => {
+      await loadAudioPreferences();
+      await initAudio();
+    })();
+  }
+  return audioInitPromise;
+}
+
+function tryResumeAudioContext() {
+  ensureAudioInitialized()
+    .then(() => {
+      if (audio.context && audio.context.state === "suspended") {
+        return audio.context.resume();
+      }
+      return undefined;
+    })
+    .catch(() => {
+      /* noop */
+    });
+}
+
 async function initAudio() {
+  if (audio.context) return;
   audio.context = new (window.AudioContext ||
     (window as any).webkitAudioContext)();
   const ctx = audio.context;
@@ -108,10 +143,7 @@ async function initAudio() {
 
   audio.engineNode = osc;
   audio.engineGain = gain;
-
-  const muteStored = await persistence.getItem(PERSISTENCE_KEYS.MUTE);
-  if (muteStored === "1") {
-    audio.muted = true;
+  if (audio.muted) {
     gain.gain.value = 0;
   }
 }
@@ -221,7 +253,8 @@ export async function initGame() {
   };
 
   await initUI();
-  await initAudio();
+  await loadAudioPreferences();
+  updateMuteButtonUI();
 
   // Load high score if available
   const hs = await persistence.getItem(PERSISTENCE_KEYS.HIGH_SCORE);
@@ -333,6 +366,8 @@ function addEventListeners() {
   // Buttons
   document.addEventListener("DOMContentLoaded", async () => {
     const ui = await initUI();
+    await loadAudioPreferences();
+    updateMuteButtonUI();
     setupTouchControls(ui);
     ui.playBtn.onclick = () => {
       tryResumeAudioContext();
@@ -343,7 +378,7 @@ function addEventListeners() {
     };
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
-      ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
+      updateMuteButtonUI();
       if (audio.muted) {
         if (audio.engineGain) audio.engineGain.gain.value = 0;
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
