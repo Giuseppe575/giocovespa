@@ -300,53 +300,27 @@ export async function initGame() {
 
   // Setup button handlers
   const ui = getUI();
-  console.log("initGame() - getUI() restituito:", !!ui);
   if (ui) {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-    console.log("initGame() - Assegnando event handlers a playBtn...");
 
-    // Flag per evitare doppia esecuzione
-    let isStarting = false;
-
-    // Funzione per avviare il gioco
-    const handlePlay = async () => {
-      if (isStarting) return;
-      isStarting = true;
-      console.log("handlePlay() chiamato");
-
-      try {
-        await startRun();
-      } catch (err) {
-        console.error("Errore durante l'avvio del gioco:", err);
-      }
-      setTimeout(() => { isStarting = false; }, 500);
+    // Handler semplice per GIOCA - funziona su iOS
+    const playGame = () => {
+      startRun().catch(() => {});
     };
 
-    // Usa pointerup per iOS/Android/Desktop
-    ui.playBtn.addEventListener('pointerup', handlePlay);
-    // Fallback per browser vecchi
-    ui.playBtn.addEventListener('click', handlePlay);
+    // Aggiungi tutti i possibili eventi per massima compatibilità iOS
+    ui.playBtn.ontouchstart = playGame;
+    ui.playBtn.onclick = playGame;
 
-    console.log("initGame() - event handlers assegnati a playBtn");
-
-    // Flag per restart
-    let isRestarting = false;
-
-    // Funzione per riavviare il gioco
-    const handleRestart = async () => {
-      if (isRestarting || gameOverCooldown > 0) return;
-      isRestarting = true;
-      console.log("handleRestart() chiamato");
-      try {
-        await restart();
-      } catch (err) {
-        console.error("Errore durante il riavvio del gioco:", err);
+    // Handler semplice per RIPROVA
+    const restartGame = () => {
+      if (gameOverCooldown <= 0) {
+        restart().catch(() => {});
       }
-      setTimeout(() => { isRestarting = false; }, 500);
     };
 
-    ui.restartBtn.addEventListener('pointerup', handleRestart);
-    ui.restartBtn.addEventListener('click', handleRestart);
+    ui.restartBtn.ontouchstart = restartGame;
+    ui.restartBtn.onclick = restartGame;
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
       ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
