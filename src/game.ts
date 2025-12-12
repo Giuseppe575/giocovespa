@@ -305,36 +305,56 @@ export async function initGame() {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
     console.log("initGame() - Assegnando event handlers a playBtn...");
 
-    // Funzione per avviare il gioco (usata sia da click che da touch)
-    const handlePlayClick = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log("Pulsante GIOCA attivato (evento:", e.type, ")");
-      startRun().catch((err) => {
+    // Flag per evitare doppia esecuzione
+    let isStarting = false;
+
+    // Funzione per avviare il gioco
+    const handlePlay = async () => {
+      if (isStarting) return;
+      isStarting = true;
+      console.log("handlePlay() chiamato, gameState:", gameState);
+
+      // Debug: mostra che il tap è stato ricevuto
+      if (gameState !== "MENU") {
+        console.log("handlePlay: gameState non è MENU, ignoro");
+        isStarting = false;
+        return;
+      }
+
+      try {
+        await startRun();
+      } catch (err) {
         console.error("Errore durante l'avvio del gioco:", err);
-      });
+        alert("Errore avvio: " + (err as Error).message);
+      }
+      setTimeout(() => { isStarting = false; }, 500);
     };
 
-    // Supporto sia click che touch per iOS
-    ui.playBtn.addEventListener('click', handlePlayClick);
-    ui.playBtn.addEventListener('touchend', handlePlayClick);
+    // Usa pointerup per iOS/Android/Desktop
+    ui.playBtn.addEventListener('pointerup', handlePlay);
+    // Fallback per browser vecchi
+    ui.playBtn.addEventListener('click', handlePlay);
 
     console.log("initGame() - event handlers assegnati a playBtn");
 
+    // Flag per restart
+    let isRestarting = false;
+
     // Funzione per riavviare il gioco
-    const handleRestartClick = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      console.log("Pulsante RIPROVA attivato (evento:", e.type, ")");
-      if (gameOverCooldown <= 0) {
-        restart().catch((err) => {
-          console.error("Errore durante il riavvio del gioco:", err);
-        });
+    const handleRestart = async () => {
+      if (isRestarting || gameOverCooldown > 0) return;
+      isRestarting = true;
+      console.log("handleRestart() chiamato");
+      try {
+        await restart();
+      } catch (err) {
+        console.error("Errore durante il riavvio del gioco:", err);
       }
+      setTimeout(() => { isRestarting = false; }, 500);
     };
 
-    ui.restartBtn.addEventListener('click', handleRestartClick);
-    ui.restartBtn.addEventListener('touchend', handleRestartClick);
+    ui.restartBtn.addEventListener('pointerup', handleRestart);
+    ui.restartBtn.addEventListener('click', handleRestart);
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
       ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
@@ -468,8 +488,11 @@ function resetGameState() {
 
 async function startRun() {
   console.log("startRun() chiamato, world:", !!world);
+
   if (!world) {
-    console.error("startRun: world non inizializzato, impossibile avviare il gioco");
+    console.error("startRun: world non inizializzato!");
+    // Mostra errore visibile all'utente
+    alert("Errore: il gioco non è ancora caricato. Ricarica la pagina.");
     return;
   }
 
@@ -479,6 +502,7 @@ async function startRun() {
     console.warn("startRun: errore audio ignorato, il gioco continua:", err);
   }
 
+  console.log("startRun: nascondo menu...");
   hideMenu();
   hideGameOver();
   resetGameState();
