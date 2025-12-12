@@ -1,44 +1,52 @@
 
 import { initGame, manualStartGame } from "./game";
 
-// Setup handlers UNA sola volta
-let buttonsSetup = false;
-
-const setupButtons = () => {
-  if (buttonsSetup) return;
-  buttonsSetup = true;
-
+// Imposta handler SUBITO quando il DOM è pronto
+const setupButtonsImmediate = () => {
   const playBtn = document.getElementById('play-btn');
   const restartBtn = document.getElementById('restart-btn');
 
+  // Funzione che gestisce il click/touch
+  const handleStart = () => {
+    manualStartGame();
+  };
+
   if (playBtn) {
-    playBtn.ontouchstart = (e) => {
+    // Usa addEventListener che è più affidabile su iOS
+    playBtn.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      manualStartGame();
-    };
-    playBtn.onclick = () => manualStartGame();
+      handleStart();
+    }, { passive: false, capture: true });
+
+    playBtn.addEventListener('click', handleStart, { capture: true });
   }
 
   if (restartBtn) {
-    restartBtn.ontouchstart = (e) => {
+    restartBtn.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      manualStartGame();
-    };
-    restartBtn.onclick = () => manualStartGame();
+      handleStart();
+    }, { passive: false, capture: true });
+
+    restartBtn.addEventListener('click', handleStart, { capture: true });
   }
 };
 
-const startGame = async () => {
+// Inizializza il gioco
+const init = async () => {
+  // Setup buttons prima di tutto
+  setupButtonsImmediate();
+
+  // Poi inizializza il gioco
   try {
     await initGame();
-    setupButtons();
   } catch (err) {
-    console.error("Errore:", err);
+    console.error("Errore inizializzazione:", err);
   }
 };
 
+// Avvia quando il DOM è pronto
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", startGame, { once: true });
+  document.addEventListener("DOMContentLoaded", init, { once: true });
 } else {
-  startGame();
+  init();
 }
