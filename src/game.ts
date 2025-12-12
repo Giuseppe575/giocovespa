@@ -298,29 +298,10 @@ export async function initGame() {
     scoreSystem.highScore = parseFloat(hs);
   }
 
-  // Setup button handlers
+  // Setup button handlers (solo mute - play/restart gestiti in main.ts)
   const ui = getUI();
   if (ui) {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-
-    // Handler semplice per GIOCA - funziona su iOS
-    const playGame = () => {
-      startRun().catch(() => {});
-    };
-
-    // Aggiungi tutti i possibili eventi per massima compatibilità iOS
-    ui.playBtn.ontouchstart = playGame;
-    ui.playBtn.onclick = playGame;
-
-    // Handler semplice per RIPROVA
-    const restartGame = () => {
-      if (gameOverCooldown <= 0) {
-        restart().catch(() => {});
-      }
-    };
-
-    ui.restartBtn.ontouchstart = restartGame;
-    ui.restartBtn.onclick = restartGame;
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
       ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
@@ -455,17 +436,15 @@ function resetGameState() {
 async function startRun() {
   if (!world) return;
 
-  try {
-    await resumeAudioContext();
-  } catch (err) {
-    // ignora errori audio
-  }
-
+  // PRIMA resetta tutto
+  resetGameState();
   hideMenu();
   hideGameOver();
-  resetGameState();
   gameState = "RUNNING";
   flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
+
+  // Audio DOPO, senza bloccare
+  resumeAudioContext().catch(() => {});
 }
 
 // Funzione esportata per avvio manuale da main.ts
