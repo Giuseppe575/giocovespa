@@ -452,26 +452,19 @@ function resetGameState() {
 async function startRun() {
   if (!world) return;
 
-  // Nascondi UI prima
+  // Resetta completamente lo stato PRIMA di tutto
+  resetGameState();
+
+  // Nascondi UI
   hideMenu();
   hideGameOver();
 
-  // Resetta completamente lo stato
-  resetGameState();
-
-  // Imposta velocità iniziale
-  world.player.speed = GAME_CONFIG.baseSpeed;
-  world.player.targetSpeed = GAME_CONFIG.baseSpeed;
-
-  // Piccolo delay per assicurarsi che tutto sia pronto
-  await new Promise(resolve => setTimeout(resolve, 50));
-
-  // Ora avvia il gioco
+  // Avvia il gioco immediatamente
   gameState = "RUNNING";
   lastTime = now();
   flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
 
-  // Audio in background
+  // Audio in background senza bloccare
   resumeAudioContext().catch(() => {});
 }
 
