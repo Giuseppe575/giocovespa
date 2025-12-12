@@ -149,7 +149,12 @@ async function initAudio() {
 async function resumeAudioContext() {
   if (!audio.context) return;
   if (audio.context.state === "suspended") {
-    await audio.context.resume();
+    try {
+      await audio.context.resume();
+    } catch (err) {
+      console.warn("Impossibile riprendere AudioContext, il gioco continua senza audio:", err);
+      audio.muted = true;
+    }
   }
 }
 
@@ -290,9 +295,19 @@ export async function initGame() {
   const ui = getUI();
   if (ui) {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-    ui.playBtn.onclick = () => startRun();
+    ui.playBtn.onclick = () => {
+      console.log("Pulsante GIOCA cliccato");
+      startRun().catch((err) => {
+        console.error("Errore durante l'avvio del gioco:", err);
+      });
+    };
     ui.restartBtn.onclick = () => {
-      if (gameOverCooldown <= 0) restart();
+      console.log("Pulsante RIPROVA cliccato");
+      if (gameOverCooldown <= 0) {
+        restart().catch((err) => {
+          console.error("Errore durante il riavvio del gioco:", err);
+        });
+      }
     };
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
@@ -357,13 +372,13 @@ function addEventListeners() {
     if (e.code === "Space") {
       input.turbo = true;
       if (gameState === "MENU") {
-        startRun();
+        startRun().catch((err) => console.error("Errore avvio gioco:", err));
       } else if (gameState === "GAME_OVER" && gameOverCooldown <= 0) {
-        restart();
+        restart().catch((err) => console.error("Errore riavvio gioco:", err));
       }
     }
     if (e.code === "Enter" && gameState === "MENU") {
-      startRun();
+      startRun().catch((err) => console.error("Errore avvio gioco:", err));
     }
   });
 
@@ -424,18 +439,29 @@ function resetGameState() {
   lastTime = now();
 }
 
-function startRun() {
-  if (!world) return;
-  resumeAudioContext();
+async function startRun() {
+  console.log("startRun() chiamato, world:", !!world);
+  if (!world) {
+    console.error("startRun: world non inizializzato, impossibile avviare il gioco");
+    return;
+  }
+
+  try {
+    await resumeAudioContext();
+  } catch (err) {
+    console.warn("startRun: errore audio ignorato, il gioco continua:", err);
+  }
+
   hideMenu();
   hideGameOver();
   resetGameState();
   gameState = "RUNNING";
+  console.log("Gioco avviato! gameState:", gameState);
   flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
 }
 
-function restart() {
-  startRun();
+async function restart() {
+  await startRun();
 }
 
 function bindHoldButton(
