@@ -16,6 +16,8 @@ type UIElements = {
   finalScore: HTMLElement;
   bestScore: HTMLElement;
   muteBtn: HTMLButtonElement;
+  mobileAccelerate: HTMLButtonElement;
+  mobileBrake: HTMLButtonElement;
 };
 
 let ui: UIElements | null = null;
@@ -37,6 +39,8 @@ export async function initUI(): Promise<UIElements> {
     finalScore: qs("final-score"),
     bestScore: qs("best-score"),
     muteBtn: qs("mute-btn") as HTMLButtonElement,
+    mobileAccelerate: qs("mobile-accelerate") as HTMLButtonElement,
+    mobileBrake: qs("mobile-brake") as HTMLButtonElement,
   };
 
   const savedHigh = await persistence.getItem(PERSISTENCE_KEYS.HIGH_SCORE);

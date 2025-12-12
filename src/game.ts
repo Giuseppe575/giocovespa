@@ -80,6 +80,10 @@ async function initAudio() {
   const ctx = audio.context;
   if (!ctx) return;
 
+  if (ctx.state === "suspended") {
+    await ctx.resume();
+  }
+
   const mainOsc = ctx.createOscillator();
   mainOsc.type = "sawtooth";
 
@@ -120,6 +124,13 @@ async function initAudio() {
   if (muteStored === "1") {
     audio.muted = true;
     mix.gain.value = 0;
+  }
+}
+
+async function resumeAudioContext() {
+  if (!audio.context) return;
+  if (audio.context.state === "suspended") {
+    await audio.context.resume();
   }
 }
 
@@ -254,6 +265,7 @@ export async function initGame() {
   // Setup button handlers
   const ui = getUI();
   if (ui) {
+    ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
     ui.playBtn.onclick = () => startRun();
     ui.restartBtn.onclick = () => {
       if (gameOverCooldown <= 0) restart();
@@ -268,6 +280,14 @@ export async function initGame() {
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0");
       }
     };
+
+    // Mobile hold controls
+    bindHoldButton(ui.mobileAccelerate, () => (input.up = true), () => {
+      input.up = false;
+    });
+    bindHoldButton(ui.mobileBrake, () => (input.down = true), () => {
+      input.down = false;
+    });
   }
 
   resetGameState();
@@ -382,6 +402,7 @@ function resetGameState() {
 
 function startRun() {
   if (!world) return;
+  resumeAudioContext();
   hideMenu();
   hideGameOver();
   resetGameState();
@@ -391,6 +412,27 @@ function startRun() {
 
 function restart() {
   startRun();
+}
+
+function bindHoldButton(
+  button: HTMLButtonElement,
+  onPress: () => void,
+  onRelease: () => void
+) {
+  const handlePointerDown = (e: PointerEvent) => {
+    e.preventDefault();
+    onPress();
+  };
+
+  const handlePointerUp = (e: PointerEvent) => {
+    e.preventDefault();
+    onRelease();
+  };
+
+  button.addEventListener("pointerdown", handlePointerDown);
+  button.addEventListener("pointerup", handlePointerUp);
+  button.addEventListener("pointercancel", handlePointerUp);
+  button.addEventListener("pointerleave", handlePointerUp);
 }
 
 function onResize() {
