@@ -231,12 +231,17 @@ function playCrash() {
 }
 
 export async function initGame() {
+  console.log("initGame() - Avvio inizializzazione gioco...");
   const scene = createScene();
+  console.log("initGame() - Scene creata");
   const camera = createCamera();
+  console.log("initGame() - Camera creata");
   const renderer = createRenderer();
+  console.log("initGame() - Renderer creato e aggiunto al DOM");
   const clock = new THREE.Clock();
 
   addEventListeners();
+  console.log("initGame() - Event listeners aggiunti");
 
   const cityFogColor = new THREE.Color(GAME_CONFIG.cityFogColor);
   const playerMesh = createVespaWithRider();
@@ -276,8 +281,10 @@ export async function initGame() {
     vehiclesPool,
     cityFogColor,
   };
+  console.log("initGame() - World inizializzato:", !!world);
 
   await initUI();
+  console.log("initGame() - UI inizializzata");
   try {
     await initAudio();
   } catch (err) {
@@ -293,14 +300,17 @@ export async function initGame() {
 
   // Setup button handlers
   const ui = getUI();
+  console.log("initGame() - getUI() restituito:", !!ui);
   if (ui) {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
+    console.log("initGame() - Assegnando onclick a playBtn...");
     ui.playBtn.onclick = () => {
       console.log("Pulsante GIOCA cliccato");
       startRun().catch((err) => {
         console.error("Errore durante l'avvio del gioco:", err);
       });
     };
+    console.log("initGame() - onclick assegnato a playBtn");
     ui.restartBtn.onclick = () => {
       console.log("Pulsante RIPROVA cliccato");
       if (gameOverCooldown <= 0) {
@@ -334,6 +344,7 @@ export async function initGame() {
 
   window.addEventListener("resize", onResize);
   onResize();
+  console.log("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
   animate();
 }
 

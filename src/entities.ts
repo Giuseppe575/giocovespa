@@ -17,7 +17,18 @@ export function createRenderer(): THREE.WebGLRenderer {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  document.body.appendChild(renderer.domElement);
+
+  // Stile canvas per posizionamento corretto
+  const canvas = renderer.domElement;
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.zIndex = '0';
+
+  document.body.appendChild(canvas);
+  console.log("Renderer canvas aggiunto al DOM");
   return renderer;
 }
 

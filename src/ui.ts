@@ -58,8 +58,14 @@ export function showMenu() {
 }
 
 export function hideMenu() {
-  if (!ui) return;
+  console.log("hideMenu() chiamato, ui:", !!ui);
+  if (!ui) {
+    console.error("hideMenu: ui è null!");
+    return;
+  }
+  console.log("hideMenu() - Rimuovo classe 'visible' dal menu overlay...");
   ui.menuOverlay.classList.remove("visible");
+  console.log("hideMenu() - Menu nascosto");
 }
 
 export function showGameOver(scoreSystem: ScoreSystem) {
