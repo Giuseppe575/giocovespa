@@ -409,18 +409,33 @@ function addEventListeners() {
 }
 
 function resetGameState() {
+  // Reset punteggi
   scoreSystem.score = 0;
   scoreSystem.distance = 0;
   scoreSystem.combo = 1;
   scoreSystem.lastComboTime = now();
+
+  // Reset stato gioco
   turboTimeLeft = 0;
   cameraShakeIntensity = 0;
   gameOverCooldown = 0;
 
+  // Reset input
+  input.left = false;
+  input.right = false;
+  input.up = false;
+  input.down = false;
+  input.turbo = false;
+
   if (!world) return;
-  world.obstacles.forEach((o) => world.scene.remove(o.mesh));
+
+  // Rimuovi TUTTI gli ostacoli
+  for (let i = world.obstacles.length - 1; i >= 0; i--) {
+    world.scene.remove(world.obstacles[i].mesh);
+  }
   world.obstacles.length = 0;
 
+  // Reset player
   world.player.speed = GAME_CONFIG.baseSpeed;
   world.player.targetSpeed = GAME_CONFIG.baseSpeed;
   world.player.turboCharge = 0;
@@ -428,22 +443,35 @@ function resetGameState() {
   world.player.mesh.position.set(0, 0, -5);
   world.player.mesh.rotation.set(0, 0, 0);
 
-  lastSpawnZ = -25;
-  lastSpawnedLanes = []; // Reset lane tracking
+  // Reset spawn - metti lontano per evitare collisioni immediate
+  lastSpawnZ = -50;
+  lastSpawnedLanes = [];
   lastTime = now();
 }
 
 async function startRun() {
   if (!world) return;
 
-  // PRIMA resetta tutto
-  resetGameState();
+  // Nascondi UI prima
   hideMenu();
   hideGameOver();
+
+  // Resetta completamente lo stato
+  resetGameState();
+
+  // Imposta velocità iniziale
+  world.player.speed = GAME_CONFIG.baseSpeed;
+  world.player.targetSpeed = GAME_CONFIG.baseSpeed;
+
+  // Piccolo delay per assicurarsi che tutto sia pronto
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  // Ora avvia il gioco
   gameState = "RUNNING";
+  lastTime = now();
   flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
 
-  // Audio DOPO, senza bloccare
+  // Audio in background
   resumeAudioContext().catch(() => {});
 }
 
