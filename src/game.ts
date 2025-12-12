@@ -75,8 +75,22 @@ let gameOverCooldown = 0;
 let cameraShakeIntensity = 0;
 
 async function initAudio() {
-  audio.context = new (window.AudioContext ||
-    (window as any).webkitAudioContext)();
+  const AudioContextCtor =
+    (window as any).AudioContext || (window as any).webkitAudioContext;
+
+  if (!AudioContextCtor) {
+    console.warn("AudioContext non supportato, avvio senza audio.");
+    audio.muted = true;
+    return;
+  }
+
+  try {
+    audio.context = new AudioContextCtor();
+  } catch (err) {
+    console.warn("Impossibile creare l'audio, il gioco proseguirà silenzioso.", err);
+    audio.muted = true;
+    return;
+  }
   const ctx = audio.context;
   if (!ctx) return;
 
