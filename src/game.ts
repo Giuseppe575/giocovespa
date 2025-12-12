@@ -453,28 +453,27 @@ function resetGameState() {
 }
 
 async function startRun() {
-  console.log("startRun() chiamato, world:", !!world);
-
-  if (!world) {
-    console.error("startRun: world non inizializzato!");
-    // Mostra errore visibile all'utente
-    alert("Errore: il gioco non è ancora caricato. Ricarica la pagina.");
-    return;
-  }
+  if (!world) return;
 
   try {
     await resumeAudioContext();
   } catch (err) {
-    console.warn("startRun: errore audio ignorato, il gioco continua:", err);
+    // ignora errori audio
   }
 
-  console.log("startRun: nascondo menu...");
   hideMenu();
   hideGameOver();
   resetGameState();
   gameState = "RUNNING";
-  console.log("Gioco avviato! gameState:", gameState);
   flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
+}
+
+// Funzione esportata per avvio manuale da main.ts
+export function manualStartGame() {
+  if (!world) return;
+  if (gameState === "MENU" || gameState === "GAME_OVER") {
+    startRun().catch(() => {});
+  }
 }
 
 async function restart() {
