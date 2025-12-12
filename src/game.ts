@@ -303,22 +303,38 @@ export async function initGame() {
   console.log("initGame() - getUI() restituito:", !!ui);
   if (ui) {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-    console.log("initGame() - Assegnando onclick a playBtn...");
-    ui.playBtn.onclick = () => {
-      console.log("Pulsante GIOCA cliccato");
+    console.log("initGame() - Assegnando event handlers a playBtn...");
+
+    // Funzione per avviare il gioco (usata sia da click che da touch)
+    const handlePlayClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Pulsante GIOCA attivato (evento:", e.type, ")");
       startRun().catch((err) => {
         console.error("Errore durante l'avvio del gioco:", err);
       });
     };
-    console.log("initGame() - onclick assegnato a playBtn");
-    ui.restartBtn.onclick = () => {
-      console.log("Pulsante RIPROVA cliccato");
+
+    // Supporto sia click che touch per iOS
+    ui.playBtn.addEventListener('click', handlePlayClick);
+    ui.playBtn.addEventListener('touchend', handlePlayClick);
+
+    console.log("initGame() - event handlers assegnati a playBtn");
+
+    // Funzione per riavviare il gioco
+    const handleRestartClick = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("Pulsante RIPROVA attivato (evento:", e.type, ")");
       if (gameOverCooldown <= 0) {
         restart().catch((err) => {
           console.error("Errore durante il riavvio del gioco:", err);
         });
       }
     };
+
+    ui.restartBtn.addEventListener('click', handleRestartClick);
+    ui.restartBtn.addEventListener('touchend', handleRestartClick);
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
       ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
