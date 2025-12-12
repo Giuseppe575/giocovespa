@@ -1,25 +1,49 @@
 
-// Mostra subito che lo script parte
-try {
-  console.log("main.ts - Script iniziato");
-} catch (e) {
-  // ignore
-}
+import { initGame, manualStartGame } from "./game";
 
-import { initGame } from "./game";
+// Aggiungi handler al pulsante SUBITO, prima di tutto
+const setupButton = () => {
+  const playBtn = document.getElementById('play-btn');
+  const restartBtn = document.getElementById('restart-btn');
+
+  if (playBtn) {
+    // Rimuovi qualsiasi handler esistente e aggiungi il nuovo
+    playBtn.onclick = null;
+    playBtn.ontouchstart = null;
+
+    const startHandler = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      manualStartGame();
+    };
+
+    playBtn.addEventListener('touchstart', startHandler, { passive: false });
+    playBtn.addEventListener('click', startHandler);
+  }
+
+  if (restartBtn) {
+    const restartHandler = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      manualStartGame();
+    };
+
+    restartBtn.addEventListener('touchstart', restartHandler, { passive: false });
+    restartBtn.addEventListener('click', restartHandler);
+  }
+};
 
 const startGame = async () => {
   try {
-    console.log("startGame() chiamato");
+    // Setup pulsanti prima di tutto
+    setupButton();
+
     await initGame();
-    console.log("initGame() completato con successo");
+
+    // Setup di nuovo dopo initGame nel caso siano stati sovrascritti
+    setupButton();
   } catch (err) {
-    console.error("Errore di inizializzazione del gioco:", err);
-    // Mostra errore su schermo
-    const errorDiv = document.createElement('div');
-    errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:red;color:white;padding:20px;z-index:9999;font-size:16px;max-width:90%;text-align:center;';
-    errorDiv.textContent = "Errore: " + (err as Error).message;
-    document.body.appendChild(errorDiv);
+    console.error("Errore:", err);
   }
 };
 
