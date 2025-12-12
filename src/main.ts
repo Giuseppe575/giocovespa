@@ -1,15 +1,26 @@
 
+// Mostra subito che lo script parte
+try {
+  console.log("main.ts - Script iniziato");
+} catch (e) {
+  // ignore
+}
+
 import { initGame } from "./game";
 
-// Debug per iOS - mostra che lo script è caricato
-console.log("main.ts caricato");
-
-const startGame = () => {
-  console.log("startGame() chiamato");
-  initGame().catch((err) => {
+const startGame = async () => {
+  try {
+    console.log("startGame() chiamato");
+    await initGame();
+    console.log("initGame() completato con successo");
+  } catch (err) {
     console.error("Errore di inizializzazione del gioco:", err);
-    alert("Errore caricamento gioco: " + (err as Error).message);
-  });
+    // Mostra errore su schermo
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:red;color:white;padding:20px;z-index:9999;font-size:16px;max-width:90%;text-align:center;';
+    errorDiv.textContent = "Errore: " + (err as Error).message;
+    document.body.appendChild(errorDiv);
+  }
 };
 
 if (document.readyState === "loading") {

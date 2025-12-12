@@ -310,18 +310,14 @@ export async function initGame() {
 
     // Funzione per avviare il gioco
     const handlePlay = async () => {
-      // DEBUG: Alert per confermare che il tap è stato ricevuto
-      alert("TAP RICEVUTO! Avvio gioco...");
-
       if (isStarting) return;
       isStarting = true;
-      console.log("handlePlay() chiamato, gameState:", gameState);
+      console.log("handlePlay() chiamato");
 
       try {
         await startRun();
       } catch (err) {
         console.error("Errore durante l'avvio del gioco:", err);
-        alert("Errore avvio: " + (err as Error).message);
       }
       setTimeout(() => { isStarting = false; }, 500);
     };
