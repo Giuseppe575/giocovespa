@@ -310,16 +310,12 @@ export async function initGame() {
 
     // Funzione per avviare il gioco
     const handlePlay = async () => {
+      // DEBUG: Alert per confermare che il tap è stato ricevuto
+      alert("TAP RICEVUTO! Avvio gioco...");
+
       if (isStarting) return;
       isStarting = true;
       console.log("handlePlay() chiamato, gameState:", gameState);
-
-      // Debug: mostra che il tap è stato ricevuto
-      if (gameState !== "MENU") {
-        console.log("handlePlay: gameState non è MENU, ignoro");
-        isStarting = false;
-        return;
-      }
 
       try {
         await startRun();
