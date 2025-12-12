@@ -61,7 +61,9 @@ let audio: AudioSystem = {
   context: null,
   muted: false,
   engineNode: null,
+  engineOvertone: null,
   engineGain: null,
+  engineFilter: null,
   lastWhooshTime: 0,
 };
 
@@ -78,35 +80,75 @@ async function initAudio() {
   const ctx = audio.context;
   if (!ctx) return;
 
-  const osc = ctx.createOscillator();
-  osc.type = "sawtooth";
-  const gain = ctx.createGain();
-  gain.gain.value = 0.0;
+  const mainOsc = ctx.createOscillator();
+  mainOsc.type = "sawtooth";
 
-  osc.connect(gain).connect(ctx.destination);
-  osc.start();
+  const overtone = ctx.createOscillator();
+  overtone.type = "triangle";
+  overtone.detune.value = -120;
 
-  audio.engineNode = osc;
-  audio.engineGain = gain;
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  lfo.frequency.value = 8;
+
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 0.06;
+
+  const mix = ctx.createGain();
+  mix.gain.value = 0.0;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 320;
+  filter.Q.value = 0.9;
+
+  lfo.connect(lfoGain).connect(mix.gain);
+  mainOsc.connect(mix);
+  overtone.connect(mix);
+  mix.connect(filter).connect(ctx.destination);
+
+  mainOsc.start();
+  overtone.start();
+  lfo.start();
+
+  audio.engineNode = mainOsc;
+  audio.engineOvertone = overtone;
+  audio.engineGain = mix;
+  audio.engineFilter = filter;
 
   const muteStored = await persistence.getItem(PERSISTENCE_KEYS.MUTE);
   if (muteStored === "1") {
     audio.muted = true;
-    gain.gain.value = 0;
+    mix.gain.value = 0;
   }
 }
 
 function updateEngineSound(speed: number) {
-  if (!audio.context || !audio.engineNode || !audio.engineGain) return;
+  if (
+    !audio.context ||
+    !audio.engineNode ||
+    !audio.engineGain ||
+    !audio.engineOvertone ||
+    !audio.engineFilter
+  )
+    return;
   if (audio.muted) {
     audio.engineGain.gain.value = 0;
     return;
   }
   const norm = clamp((speed - GAME_CONFIG.minSpeed) / (GAME_CONFIG.maxSpeed - GAME_CONFIG.minSpeed), 0, 1);
-  const freq = 120 + norm * 260;
-  const vol = 0.08 + norm * 0.1;
+  const freq = 120 + norm * 240;
+  const rumbleFreq = 70 + norm * 90;
+  const vol = 0.09 + norm * 0.11;
+
   audio.engineNode.frequency.setTargetAtTime(freq, audio.context.currentTime, 0.12);
+  audio.engineOvertone.frequency.setTargetAtTime(freq * 0.52, audio.context.currentTime, 0.14);
   audio.engineGain.gain.setTargetAtTime(vol, audio.context.currentTime, 0.16);
+  audio.engineFilter.frequency.setTargetAtTime(380 + norm * 320, audio.context.currentTime, 0.18);
+  audio.engineFilter.Q.setTargetAtTime(0.9 + norm * 0.6, audio.context.currentTime, 0.16);
+
+  // subtle low rumble to evoke a Vespa single-cylinder beat
+  audio.engineOvertone.detune.setTargetAtTime(rumbleFreq * -0.1, audio.context.currentTime, 0.18);
 }
 
 function playWhoosh() {
@@ -239,13 +281,17 @@ export async function initGame() {
 function addLights(scene: THREE.Scene) {
   // delegated to entities.addLights to keep imports consistent
   // But we can't re-import here, so we redefine minimal:
-  const ambient = new THREE.AmbientLight(0x222633, 0.9);
+  const ambient = new THREE.AmbientLight(GAME_CONFIG.ambientColor, 0.9);
   scene.add(ambient);
 
-  const hemi = new THREE.HemisphereLight(0x3f5faf, 0x0d0d12, 0.6);
+  const hemi = new THREE.HemisphereLight(
+    GAME_CONFIG.hemiColorSky,
+    GAME_CONFIG.hemiColorGround,
+    0.65
+  );
   scene.add(hemi);
 
-  const dir = new THREE.DirectionalLight(0xffe0b5, 1.1);
+  const dir = new THREE.DirectionalLight(GAME_CONFIG.sunColor, 1.25);
   dir.position.set(-12, 25, 30);
   dir.castShadow = true;
   dir.shadow.mapSize.set(1024, 1024);

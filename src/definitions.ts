@@ -62,7 +62,9 @@ export type AudioSystem = {
   context: AudioContext | null;
   muted: boolean;
   engineNode: OscillatorNode | null;
+  engineOvertone: OscillatorNode | null;
   engineGain: GainNode | null;
+  engineFilter: BiquadFilterNode | null;
   lastWhooshTime: number;
 };
 
@@ -87,12 +89,12 @@ export const GAME_CONFIG = {
   cameraLookAt: new THREE.Vector3(0, 1.5, -6),
   fov: 60,
   fogNear: 8,
-  fogFar: 120,
-  ambientColor: 0x222633,
-  hemiColorSky: 0x3f5faf,
-  hemiColorGround: 0x0d0d12,
-  sunColor: 0xffe0b5,
-  cityFogColor: 0x050810,
+  fogFar: 160,
+  ambientColor: 0xe5edf7,
+  hemiColorSky: 0xcbe7ff,
+  hemiColorGround: 0x9cb7c5,
+  sunColor: 0xfff2c8,
+  cityFogColor: 0xb8ddff,
 };
 
 export const PERSISTENCE_KEYS = {

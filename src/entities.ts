@@ -228,9 +228,9 @@ export function createVespaWithRider(): THREE.Group {
 export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
   const segments: THREE.Mesh[] = [];
   const material = new THREE.MeshStandardMaterial({
-    color: 0x151515,
-    roughness: 0.95,
-    metalness: 0.02,
+    color: 0x3a3f45,
+    roughness: 0.85,
+    metalness: 0.04,
   });
 
   const width = GAME_CONFIG.laneWidth * GAME_CONFIG.lanes + 3;
@@ -277,8 +277,8 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
 
   // Side sidewalks
   const sideMat = new THREE.MeshStandardMaterial({
-    color: 0x22262b,
-    roughness: 0.9,
+    color: 0xced4da,
+    roughness: 0.85,
   });
 
   for (let i = 0; i < 40; i++) {
@@ -300,7 +300,7 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
  */
 export function createBuildings(scene: THREE.Scene, worldWidth: number) {
   const buildings: THREE.Mesh[] = [];
-  const colors = [0x1d2026, 0x151820, 0x101018, 0x181c26];
+  const colors = [0xcad6e4, 0xb6c6d9, 0xdfe7f2, 0xc1d4e6];
 
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 40; i++) {
@@ -327,7 +327,7 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
       // some glowing windows
       if (Math.random() > 0.5) {
         const winCount = Math.floor(randRange(4, 12));
-        const emissiveMat = createEmissiveMaterial(0x4ad0ff, 0.4);
+        const emissiveMat = createEmissiveMaterial(0xf7f1d5, 0.15);
         for (let j = 0; j < winCount; j++) {
           const wg = new THREE.BoxGeometry(0.18, 0.26, 0.02);
           const wmesh = new THREE.Mesh(wg, emissiveMat);
@@ -353,8 +353,8 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
     const z = -i * 10 - 5;
     for (const side of [-1, 1]) {
       const pole = new THREE.Group();
-      const poleMat = createBasicMetal(0x393c42);
-      const lampMat = createEmissiveMaterial(0xfff2d1, 1.4);
+      const poleMat = createBasicMetal(0x7b838d);
+      const lampMat = createEmissiveMaterial(0xfff2d1, 0.4);
 
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8),
@@ -391,7 +391,7 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
       const lightX = side * (worldWidth / 2 + 1.2);
       pole.position.set(lightX, 0, z);
 
-      const l = new THREE.PointLight(0xfff2d1, 0.6, 18, 1.4);
+      const l = new THREE.PointLight(0xfff2d1, 0.2, 18, 1.4);
       l.position.set(
         lamp.position.x,
         lamp.position.y - 0.08,
