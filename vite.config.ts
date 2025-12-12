@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/giocovespa/',
+  base: './',
   build: {
     outDir: 'docs',
   },
