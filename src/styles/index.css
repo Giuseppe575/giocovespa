@@ -181,6 +181,11 @@ body {
   cursor: pointer;
   box-shadow: 0 12px 30px rgba(15, 28, 44, 0.3);
   transition: all 0.22s ease;
+  /* Fix per iOS touch */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .panel button:hover {

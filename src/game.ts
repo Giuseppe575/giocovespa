@@ -231,12 +231,17 @@ function playCrash() {
 }
 
 export async function initGame() {
+  console.log("initGame() - Avvio inizializzazione gioco...");
   const scene = createScene();
+  console.log("initGame() - Scene creata");
   const camera = createCamera();
+  console.log("initGame() - Camera creata");
   const renderer = createRenderer();
+  console.log("initGame() - Renderer creato e aggiunto al DOM");
   const clock = new THREE.Clock();
 
   addEventListeners();
+  console.log("initGame() - Event listeners aggiunti");
 
   const cityFogColor = new THREE.Color(GAME_CONFIG.cityFogColor);
   const playerMesh = createVespaWithRider();
@@ -276,8 +281,10 @@ export async function initGame() {
     vehiclesPool,
     cityFogColor,
   };
+  console.log("initGame() - World inizializzato:", !!world);
 
   await initUI();
+  console.log("initGame() - UI inizializzata");
   try {
     await initAudio();
   } catch (err) {
@@ -293,22 +300,57 @@ export async function initGame() {
 
   // Setup button handlers
   const ui = getUI();
+  console.log("initGame() - getUI() restituito:", !!ui);
   if (ui) {
     ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
-    ui.playBtn.onclick = () => {
-      console.log("Pulsante GIOCA cliccato");
-      startRun().catch((err) => {
+    console.log("initGame() - Assegnando event handlers a playBtn...");
+
+    // Flag per evitare doppia esecuzione
+    let isStarting = false;
+
+    // Funzione per avviare il gioco
+    const handlePlay = async () => {
+      // DEBUG: Alert per confermare che il tap è stato ricevuto
+      alert("TAP RICEVUTO! Avvio gioco...");
+
+      if (isStarting) return;
+      isStarting = true;
+      console.log("handlePlay() chiamato, gameState:", gameState);
+
+      try {
+        await startRun();
+      } catch (err) {
         console.error("Errore durante l'avvio del gioco:", err);
-      });
-    };
-    ui.restartBtn.onclick = () => {
-      console.log("Pulsante RIPROVA cliccato");
-      if (gameOverCooldown <= 0) {
-        restart().catch((err) => {
-          console.error("Errore durante il riavvio del gioco:", err);
-        });
+        alert("Errore avvio: " + (err as Error).message);
       }
+      setTimeout(() => { isStarting = false; }, 500);
     };
+
+    // Usa pointerup per iOS/Android/Desktop
+    ui.playBtn.addEventListener('pointerup', handlePlay);
+    // Fallback per browser vecchi
+    ui.playBtn.addEventListener('click', handlePlay);
+
+    console.log("initGame() - event handlers assegnati a playBtn");
+
+    // Flag per restart
+    let isRestarting = false;
+
+    // Funzione per riavviare il gioco
+    const handleRestart = async () => {
+      if (isRestarting || gameOverCooldown > 0) return;
+      isRestarting = true;
+      console.log("handleRestart() chiamato");
+      try {
+        await restart();
+      } catch (err) {
+        console.error("Errore durante il riavvio del gioco:", err);
+      }
+      setTimeout(() => { isRestarting = false; }, 500);
+    };
+
+    ui.restartBtn.addEventListener('pointerup', handleRestart);
+    ui.restartBtn.addEventListener('click', handleRestart);
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
       ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
@@ -334,6 +376,7 @@ export async function initGame() {
 
   window.addEventListener("resize", onResize);
   onResize();
+  console.log("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
   animate();
 }
 
@@ -441,8 +484,11 @@ function resetGameState() {
 
 async function startRun() {
   console.log("startRun() chiamato, world:", !!world);
+
   if (!world) {
-    console.error("startRun: world non inizializzato, impossibile avviare il gioco");
+    console.error("startRun: world non inizializzato!");
+    // Mostra errore visibile all'utente
+    alert("Errore: il gioco non è ancora caricato. Ricarica la pagina.");
     return;
   }
 
@@ -452,6 +498,7 @@ async function startRun() {
     console.warn("startRun: errore audio ignorato, il gioco continua:", err);
   }
 
+  console.log("startRun: nascondo menu...");
   hideMenu();
   hideGameOver();
   resetGameState();
