@@ -4,9 +4,15 @@
   <head>
     <meta charset="UTF-8" />
     <title>Vespa City Ride 3D</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+      }
     </style>
-    <script type="module" crossorigin src="/giocovespa/assets/index-BrhRfBRR.js"></script>
-    <link rel="stylesheet" crossorigin href="/giocovespa/assets/index-BQrY1eeO.css">
+    <script type="module" crossorigin src="/giocovespa/assets/index-D0jhuwFN.js"></script>
+    <link rel="stylesheet" crossorigin href="/giocovespa/assets/index-CQF_QyOX.css">
   </head>
   <body>
     <div id="hud">
@@ -28,6 +34,11 @@
       </div>
     </div>
 
+    <div id="mobile-controls">
+      <button id="mobile-accelerate" class="hud-button control">ACCELERA</button>
+      <button id="mobile-brake" class="hud-button control">FRENO</button>
+    </div>
+
     <div id="menu-overlay" class="overlay visible">
       <div class="panel">
         <h1>Vespa City Ride 3D</h1>
@@ -37,6 +48,7 @@
           <li>W / ↑: accelera</li>
           <li>S / ↓: rallenta</li>
           <li>Spazio: turbo istantaneo (se carico)</li>
+          <li>Mobile: trascina per sterzare, tieni premuto ACCELERA / FRENO</li>
         </ul>
         <p class="note">Sopravvivi il più a lungo possibile senza collisioni per aumentare il moltiplicatore.</p>
         <button id="play-btn">GIOCA</button>
@@ -54,10 +66,4 @@
 
   </body>
 </html>
-        <p id="best-score">Record: 0</p>
-        <button id="restart-btn">RIPROVA</button>
-      </div>
-    </div>
-
-  </body>
 </html>
