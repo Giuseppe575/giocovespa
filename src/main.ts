@@ -1,47 +1,37 @@
 
 import { initGame, manualStartGame } from "./game";
 
-// Aggiungi handler al pulsante SUBITO, prima di tutto
-const setupButton = () => {
+// Setup handlers UNA sola volta
+let buttonsSetup = false;
+
+const setupButtons = () => {
+  if (buttonsSetup) return;
+  buttonsSetup = true;
+
   const playBtn = document.getElementById('play-btn');
   const restartBtn = document.getElementById('restart-btn');
 
   if (playBtn) {
-    // Rimuovi qualsiasi handler esistente e aggiungi il nuovo
-    playBtn.onclick = null;
-    playBtn.ontouchstart = null;
-
-    const startHandler = (e: Event) => {
+    playBtn.ontouchstart = (e) => {
       e.preventDefault();
-      e.stopPropagation();
       manualStartGame();
     };
-
-    playBtn.addEventListener('touchstart', startHandler, { passive: false });
-    playBtn.addEventListener('click', startHandler);
+    playBtn.onclick = () => manualStartGame();
   }
 
   if (restartBtn) {
-    const restartHandler = (e: Event) => {
+    restartBtn.ontouchstart = (e) => {
       e.preventDefault();
-      e.stopPropagation();
       manualStartGame();
     };
-
-    restartBtn.addEventListener('touchstart', restartHandler, { passive: false });
-    restartBtn.addEventListener('click', restartHandler);
+    restartBtn.onclick = () => manualStartGame();
   }
 };
 
 const startGame = async () => {
   try {
-    // Setup pulsanti prima di tutto
-    setupButton();
-
     await initGame();
-
-    // Setup di nuovo dopo initGame nel caso siano stati sovrascritti
-    setupButton();
+    setupButtons();
   } catch (err) {
     console.error("Errore:", err);
   }

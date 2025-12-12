@@ -468,11 +468,29 @@ async function startRun() {
   resumeAudioContext().catch(() => {});
 }
 
+// Flag per evitare chiamate multiple
+let isStartingGame = false;
+
 // Funzione esportata per avvio manuale da main.ts
 export function manualStartGame() {
   if (!world) return;
+  if (isStartingGame) return;
+
   if (gameState === "MENU" || gameState === "GAME_OVER") {
-    startRun().catch(() => {});
+    isStartingGame = true;
+
+    // Reset sincrono senza async
+    resetGameState();
+    hideMenu();
+    hideGameOver();
+    gameState = "RUNNING";
+    lastTime = now();
+    flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
+
+    // Audio non bloccante
+    resumeAudioContext().catch(() => {});
+
+    isStartingGame = false;
   }
 }
 
