@@ -95,7 +95,12 @@ async function initAudio() {
   if (!ctx) return;
 
   if (ctx.state === "suspended") {
-    await ctx.resume();
+    try {
+      await ctx.resume();
+    } catch (err) {
+      console.warn("Ripresa dell'audio bloccata, verrà disabilitato.", err);
+      audio.muted = true;
+    }
   }
 
   const mainOsc = ctx.createOscillator();
@@ -268,7 +273,12 @@ export async function initGame() {
   };
 
   await initUI();
-  await initAudio();
+  try {
+    await initAudio();
+  } catch (err) {
+    console.warn("Audio disabilitato, il gioco prosegue senza suoni.", err);
+    audio.muted = true;
+  }
 
   // Load high score if available
   const hs = await persistence.getItem(PERSISTENCE_KEYS.HIGH_SCORE);
