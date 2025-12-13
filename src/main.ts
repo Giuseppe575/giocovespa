@@ -5,6 +5,7 @@ import { initGame, manualStartGame } from "./game";
 const setupButtonsImmediate = () => {
   const playBtn = document.getElementById("play-btn") as HTMLButtonElement | null;
   const restartBtn = document.getElementById("restart-btn") as HTMLButtonElement | null;
+  let startRequested = false;
 
   // Se l'utente tocca prima che l'init sia finita, accodiamo lo start
   let gameReady = false;
@@ -25,6 +26,7 @@ const setupButtonsImmediate = () => {
   };
 
   const handleStart = () => {
+    startRequested = true;
     // Nascondi subito gli overlay, anche se il gioco non è ancora pronto
     hideOverlays();
 
@@ -78,6 +80,9 @@ const setupButtonsImmediate = () => {
     }
     if (restartBtn) {
       restartBtn.disabled = false;
+    }
+    if (startRequested) {
+      hideOverlays();
     }
     if (queuedStart) {
       queuedStart = false;

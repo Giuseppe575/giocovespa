@@ -396,48 +396,125 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
 /**
  * Create simple futuristic / Italian city-style buildings.
  */
+function addFacadeWindows(parent: THREE.Group, width: number, height: number, depth: number, side: number, windowMat: THREE.Material) {
+  const cols = Math.max(2, Math.floor(width / 0.9));
+  const rows = Math.max(3, Math.floor(height / 0.9));
+  const zMin = -depth / 2 + 0.35;
+  const zMax = depth / 2 - 0.35;
+  const x = side > 0 ? -(width / 2 - 0.05) : width / 2 - 0.05;
+  for (let r = 0; r < rows; r++) {
+    const y = 0.8 + r * (height / rows);
+    for (let c = 0; c < cols; c++) {
+      const z = zMin + c * ((zMax - zMin) / Math.max(1, cols - 1));
+      if (Math.random() < 0.12) continue; // piccoli vuoti casuali
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.04), windowMat);
+      win.position.set(x, y, z);
+      win.castShadow = false;
+      win.receiveShadow = false;
+      parent.add(win);
+    }
+  }
+}
+
+function createBuildingForSide(side: number, worldWidth: number): THREE.Group {
+  const style = choice<"brick" | "concrete" | "glass" | "mixed">(["brick", "concrete", "glass", "mixed"]);
+  const group = new THREE.Group();
+
+  const params = {
+    brick: {
+      color: 0x8b4a3a,
+      roughness: 0.9,
+      metalness: 0.25,
+      winColor: 0xa9c7df,
+      winEmissive: 0x183247,
+    },
+    concrete: {
+      color: 0xb7b9bd,
+      roughness: 0.82,
+      metalness: 0.15,
+      winColor: 0x9cb6c8,
+      winEmissive: 0x1f2e3a,
+    },
+    glass: {
+      color: 0x6e869a,
+      roughness: 0.4,
+      metalness: 0.35,
+      winColor: 0xa7c5dd,
+      winEmissive: 0x2a3e54,
+    },
+    mixed: {
+      color: 0xc4c4c4,
+      roughness: 0.78,
+      metalness: 0.2,
+      winColor: 0xa7c5dd,
+      winEmissive: 0x2a3e54,
+    },
+  }[style];
+
+  const w = randRange(2.8, style === "glass" ? 6.2 : 4.8);
+  const h = randRange(style === "glass" ? 8 : 5, style === "glass" ? 15 : 11);
+  const d = randRange(2.4, 4.8);
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d),
+    new THREE.MeshStandardMaterial({
+      color: params.color,
+      metalness: params.metalness,
+      roughness: params.roughness,
+    })
+  );
+  body.position.y = h / 2;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  group.add(body);
+
+  // Facciata lato strada
+  const windowMat = new THREE.MeshStandardMaterial({
+    color: params.winColor,
+    emissive: params.winEmissive,
+    emissiveIntensity: 0.15,
+    metalness: 0.1,
+    roughness: 0.35,
+  });
+  addFacadeWindows(group, w, h, d, side, windowMat);
+
+  // Bordo cornice superiore per dare più "massa"
+  const crown = new THREE.Mesh(
+    new THREE.BoxGeometry(w + 0.2, 0.25, d + 0.2),
+    new THREE.MeshStandardMaterial({
+      color: params.color,
+      metalness: params.metalness * 0.6,
+      roughness: Math.min(1, params.roughness + 0.05),
+    })
+  );
+  crown.position.set(0, h + 0.12, 0);
+  crown.castShadow = true;
+  group.add(crown);
+
+  return group;
+}
+
 export function createBuildings(scene: THREE.Scene, worldWidth: number) {
-  const buildings: THREE.Mesh[] = [];
-  const colors = [0xcad6e4, 0xb6c6d9, 0xdfe7f2, 0xc1d4e6];
+  const buildings: THREE.Group[] = [];
 
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 40; i++) {
-      const w = randRange(2.5, 4.5);
-      const h = randRange(3, 11);
-      const d = randRange(2.5, 4.5);
-      const geom = new THREE.BoxGeometry(w, h, d);
-      const mat = new THREE.MeshStandardMaterial({
-        color: choice(colors),
-        metalness: 0.35,
-        roughness: 0.85,
-      });
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.set(
+      const b = createBuildingForSide(side, worldWidth);
+      b.position.set(
         side * (worldWidth / 2 + 3 + randRange(0, 2)),
-        h / 2,
+        0,
         -i * 5 - randRange(0, 5)
       );
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      scene.add(mesh);
-      buildings.push(mesh);
 
-      // some glowing windows
-      if (Math.random() > 0.5) {
-        const winCount = Math.floor(randRange(4, 12));
-        const emissiveMat = createEmissiveMaterial(0xf7f1d5, 0.15);
-        for (let j = 0; j < winCount; j++) {
-          const wg = new THREE.BoxGeometry(0.18, 0.26, 0.02);
-          const wmesh = new THREE.Mesh(wg, emissiveMat);
-          const yy = randRange(1, h - 1);
-          const zz = randRange(-d / 2 + 0.3, d / 2 - 0.3);
-          const xx = side > 0 ? -w / 2 + 0.02 : w / 2 - 0.02;
-          wmesh.position.set(xx, yy, zz);
-          wmesh.castShadow = false;
-          wmesh.receiveShadow = false;
-          mesh.add(wmesh);
+      b.traverse((obj) => {
+        if ((obj as THREE.Mesh).isMesh) {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
         }
-      }
+      });
+
+      scene.add(b);
+      buildings.push(b);
     }
   }
 
