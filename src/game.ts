@@ -512,6 +512,11 @@ function bindHoldButton(
     button.style.transform = 'scale(0.95)';
     button.style.background = 'rgba(100, 200, 255, 0.9)';
 
+    // Se il gioco è in pausa/menù, avvialo subito al primo tap sui controlli mobili
+    if (gameState !== "RUNNING") {
+      manualStartGame();
+    }
+
     onPress();
   };
 
