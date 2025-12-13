@@ -10,6 +10,8 @@ const setupButtonsImmediate = () => {
   let gameReady = false;
   let queuedStart = false;
   let safetyReleased = false;
+  const menuOverlay = document.getElementById("menu-overlay");
+  const gameOverOverlay = document.getElementById("game-over-overlay");
 
   const handleStart = () => {
     if (!gameReady) {
@@ -17,6 +19,17 @@ const setupButtonsImmediate = () => {
       console.log("Start richiesto prima che l'init sia completata: accodo.");
       return;
     }
+
+    // Nascondi subito gli overlay, prima ancora che parta la logica di gioco
+    if (menuOverlay) {
+      menuOverlay.classList.remove("visible");
+      (menuOverlay as HTMLElement).style.display = "none";
+    }
+    if (gameOverOverlay) {
+      gameOverOverlay.classList.remove("visible");
+      (gameOverOverlay as HTMLElement).style.display = "none";
+    }
+
     manualStartGame();
   };
 

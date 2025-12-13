@@ -53,8 +53,10 @@ export async function initUI(): Promise<UIElements> {
 
 export function showMenu() {
   if (!ui) return;
+  ui.menuOverlay.style.display = "flex";
   ui.menuOverlay.classList.add("visible");
   ui.gameOverOverlay.classList.remove("visible");
+  ui.gameOverOverlay.style.display = "none";
 }
 
 export function hideMenu() {
@@ -65,13 +67,16 @@ export function hideMenu() {
   }
   console.log("hideMenu() - Rimuovo classe 'visible' dal menu overlay...");
   ui.menuOverlay.classList.remove("visible");
+  ui.menuOverlay.style.display = "none";
   console.log("hideMenu() - Menu nascosto");
 }
 
 export function showGameOver(scoreSystem: ScoreSystem) {
   if (!ui) return;
+  ui.gameOverOverlay.style.display = "flex";
   ui.gameOverOverlay.classList.add("visible");
   ui.menuOverlay.classList.remove("visible");
+  ui.menuOverlay.style.display = "none";
   ui.finalScore.textContent = `Punteggio: ${Math.floor(scoreSystem.score)}`;
   ui.bestScore.textContent = `Record: ${Math.floor(scoreSystem.highScore)}`;
 }
@@ -79,6 +84,7 @@ export function showGameOver(scoreSystem: ScoreSystem) {
 export function hideGameOver() {
   if (!ui) return;
   ui.gameOverOverlay.classList.remove("visible");
+  ui.gameOverOverlay.style.display = "none";
 }
 
 export function updateHUD(
