@@ -13,14 +13,7 @@ const setupButtonsImmediate = () => {
   const menuOverlay = document.getElementById("menu-overlay");
   const gameOverOverlay = document.getElementById("game-over-overlay");
 
-  const handleStart = () => {
-    if (!gameReady) {
-      queuedStart = true;
-      console.log("Start richiesto prima che l'init sia completata: accodo.");
-      return;
-    }
-
-    // Nascondi subito gli overlay, prima ancora che parta la logica di gioco
+  const hideOverlays = () => {
     if (menuOverlay) {
       menuOverlay.classList.remove("visible");
       (menuOverlay as HTMLElement).style.display = "none";
@@ -28,6 +21,17 @@ const setupButtonsImmediate = () => {
     if (gameOverOverlay) {
       gameOverOverlay.classList.remove("visible");
       (gameOverOverlay as HTMLElement).style.display = "none";
+    }
+  };
+
+  const handleStart = () => {
+    // Nascondi subito gli overlay, anche se il gioco non è ancora pronto
+    hideOverlays();
+
+    if (!gameReady) {
+      queuedStart = true;
+      console.log("Start richiesto prima che l'init sia completata: accodo.");
+      return;
     }
 
     manualStartGame();
@@ -77,6 +81,7 @@ const setupButtonsImmediate = () => {
     }
     if (queuedStart) {
       queuedStart = false;
+      hideOverlays();
       manualStartGame();
     }
   };
