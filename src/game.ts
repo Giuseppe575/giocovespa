@@ -503,20 +503,29 @@ function bindHoldButton(
   onPress: () => void,
   onRelease: () => void
 ) {
-  const handlePointerDown = (e: PointerEvent) => {
+  const handlePress = (e: Event) => {
     e.preventDefault();
     onPress();
   };
 
-  const handlePointerUp = (e: PointerEvent) => {
+  const handleRelease = (e: Event) => {
     e.preventDefault();
     onRelease();
   };
 
-  button.addEventListener("pointerdown", handlePointerDown);
-  button.addEventListener("pointerup", handlePointerUp);
-  button.addEventListener("pointercancel", handlePointerUp);
-  button.addEventListener("pointerleave", handlePointerUp);
+  // Usa sia touch che pointer events per massima compatibilità
+  button.addEventListener("touchstart", handlePress, { passive: false, capture: true });
+  button.addEventListener("touchend", handleRelease, { passive: false, capture: true });
+  button.addEventListener("touchcancel", handleRelease, { passive: false, capture: true });
+
+  button.addEventListener("pointerdown", handlePress);
+  button.addEventListener("pointerup", handleRelease);
+  button.addEventListener("pointercancel", handleRelease);
+  button.addEventListener("pointerleave", handleRelease);
+
+  // Fallback per mouse
+  button.addEventListener("mousedown", handlePress);
+  button.addEventListener("mouseup", handleRelease);
 }
 
 function onResize() {
