@@ -505,11 +505,25 @@ function bindHoldButton(
 ) {
   const handlePress = (e: Event) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log(`Pulsante ${button.textContent} premuto`);
+
+    // Feedback visivo
+    button.style.transform = 'scale(0.95)';
+    button.style.background = 'rgba(100, 200, 255, 0.9)';
+
     onPress();
   };
 
   const handleRelease = (e: Event) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log(`Pulsante ${button.textContent} rilasciato`);
+
+    // Rimuovi feedback visivo
+    button.style.transform = 'scale(1)';
+    button.style.background = 'rgba(255, 255, 255, 0.92)';
+
     onRelease();
   };
 
@@ -526,6 +540,8 @@ function bindHoldButton(
   // Fallback per mouse
   button.addEventListener("mousedown", handlePress);
   button.addEventListener("mouseup", handleRelease);
+
+  console.log(`Event listeners aggiunti al pulsante ${button.textContent}`);
 }
 
 function onResize() {
@@ -536,9 +552,19 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+let animateFrameCount = 0;
+
 function animate() {
   requestAnimationFrame(animate);
   if (!world) return;
+
+  animateFrameCount++;
+  if (animateFrameCount === 1) {
+    console.log("animate() - Primo frame!");
+  }
+  if (animateFrameCount % 100 === 0) {
+    console.log(`animate() - Frame ${animateFrameCount}, gameState=${gameState}, speed=${world.player.speed.toFixed(1)}`);
+  }
 
   const t = now();
   const dt = Math.min(0.05, t - lastTime);
@@ -560,9 +586,15 @@ function animate() {
 function updatePlayer(dt: number) {
   const p = world.player;
 
-  // Speed control
-  if (input.up) p.targetSpeed += 18 * dt;
-  if (input.down) p.targetSpeed -= 26 * dt;
+  // Speed control con logging
+  if (input.up) {
+    p.targetSpeed += 18 * dt;
+    if (Math.random() < 0.1) console.log(`ACCELERA: targetSpeed=${p.targetSpeed.toFixed(1)}`);
+  }
+  if (input.down) {
+    p.targetSpeed -= 26 * dt;
+    if (Math.random() < 0.1) console.log(`FRENA: targetSpeed=${p.targetSpeed.toFixed(1)}`);
+  }
   p.targetSpeed = clamp(p.targetSpeed, p.minSpeed, p.maxSpeed);
 
   // Turbo activation

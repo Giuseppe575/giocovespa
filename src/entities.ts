@@ -10,26 +10,67 @@ import {
 } from "./utils";
 
 export function createRenderer(): THREE.WebGLRenderer {
-  const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    alpha: false,
-  });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
+  console.log("createRenderer() - Inizio creazione renderer");
 
-  // Stile canvas per posizionamento corretto
-  const canvas = renderer.domElement;
-  canvas.style.position = 'fixed';
-  canvas.style.top = '0';
-  canvas.style.left = '0';
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
-  canvas.style.zIndex = '0';
+  try {
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: false,
+    });
 
-  document.body.appendChild(canvas);
-  console.log("Renderer canvas aggiunto al DOM");
-  return renderer;
+    console.log("createRenderer() - WebGLRenderer creato");
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+
+    // Stile canvas per posizionamento corretto
+    const canvas = renderer.domElement;
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.zIndex = '0';
+    canvas.id = 'game-canvas';
+
+    // Inserisci il canvas PRIMA dell'HUD per assicurarsi che sia dietro
+    const hud = document.getElementById('hud');
+    if (hud && hud.parentNode) {
+      hud.parentNode.insertBefore(canvas, hud);
+      console.log("Renderer canvas inserito prima dell'HUD");
+    } else {
+      document.body.insertBefore(canvas, document.body.firstChild);
+      console.log("Renderer canvas inserito come primo elemento del body");
+    }
+
+    console.log(`Canvas dimensioni: ${canvas.width}x${canvas.height}, style: ${canvas.style.width}x${canvas.style.height}`);
+    return renderer;
+  } catch (error) {
+    console.error("ERRORE nella creazione del renderer WebGL:", error);
+
+    // Mostra errore visibile all'utente
+    const errorDiv = document.createElement('div');
+    errorDiv.style.position = 'fixed';
+    errorDiv.style.top = '50%';
+    errorDiv.style.left = '50%';
+    errorDiv.style.transform = 'translate(-50%, -50%)';
+    errorDiv.style.background = 'rgba(255, 0, 0, 0.9)';
+    errorDiv.style.color = 'white';
+    errorDiv.style.padding = '20px';
+    errorDiv.style.borderRadius = '10px';
+    errorDiv.style.zIndex = '9999';
+    errorDiv.style.maxWidth = '80%';
+    errorDiv.style.textAlign = 'center';
+    errorDiv.innerHTML = `
+      <h3>Errore WebGL</h3>
+      <p>Il tuo browser o dispositivo non supporta WebGL.</p>
+      <p style="font-size: 12px; margin-top: 10px;">${error}</p>
+    `;
+    document.body.appendChild(errorDiv);
+
+    throw error;
+  }
 }
 
 export function createCamera(): THREE.PerspectiveCamera {
