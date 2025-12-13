@@ -73,6 +73,8 @@ let lastTime = now();
 let turboTimeLeft = 0;
 let gameOverCooldown = 0;
 let cameraShakeIntensity = 0;
+let pendingStart = false;
+let initCompleted = false;
 
 async function initAudio() {
   const AudioContextCtor =
@@ -328,6 +330,12 @@ export async function initGame() {
   window.addEventListener("resize", onResize);
   onResize();
   console.log("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
+  initCompleted = true;
+  if (pendingStart) {
+    console.log("initGame() - Avvio accodato trovato, faccio partire il gioco");
+    pendingStart = false;
+    manualStartGame();
+  }
   animate();
 }
 
@@ -473,8 +481,13 @@ let isStartingGame = false;
 
 // Funzione esportata per avvio manuale da main.ts
 export function manualStartGame() {
-  if (!world) return;
+  if (!world) {
+    pendingStart = true;
+    console.log("manualStartGame() chiamato ma world non è pronto, accodo start.");
+    return;
+  }
   if (isStartingGame) return;
+  pendingStart = false;
 
   if (gameState === "MENU" || gameState === "GAME_OVER") {
     isStartingGame = true;
