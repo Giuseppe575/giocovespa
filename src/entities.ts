@@ -12,44 +12,7 @@ import {
 export function createRenderer(): THREE.WebGLRenderer {
   console.log("createRenderer() - Inizio creazione renderer");
 
-  try {
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: false,
-    });
-
-    console.log("createRenderer() - WebGLRenderer creato");
-
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-
-    // Stile canvas per posizionamento corretto
-    const canvas = renderer.domElement;
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.zIndex = '0';
-    canvas.id = 'game-canvas';
-
-    // Inserisci il canvas PRIMA dell'HUD per assicurarsi che sia dietro
-    const hud = document.getElementById('hud');
-    if (hud && hud.parentNode) {
-      hud.parentNode.insertBefore(canvas, hud);
-      console.log("Renderer canvas inserito prima dell'HUD");
-    } else {
-      document.body.insertBefore(canvas, document.body.firstChild);
-      console.log("Renderer canvas inserito come primo elemento del body");
-    }
-
-    console.log(`Canvas dimensioni: ${canvas.width}x${canvas.height}, style: ${canvas.style.width}x${canvas.style.height}`);
-    return renderer;
-  } catch (error) {
-    console.error("ERRORE nella creazione del renderer WebGL:", error);
-
-    // Mostra errore visibile all'utente
+  const createCanvasErrorOverlay = (message: string) => {
     const errorDiv = document.createElement('div');
     errorDiv.style.position = 'fixed';
     errorDiv.style.top = '50%';
@@ -60,17 +23,100 @@ export function createRenderer(): THREE.WebGLRenderer {
     errorDiv.style.padding = '20px';
     errorDiv.style.borderRadius = '10px';
     errorDiv.style.zIndex = '9999';
-    errorDiv.style.maxWidth = '80%';
+    errorDiv.style.maxWidth = '90%';
     errorDiv.style.textAlign = 'center';
     errorDiv.innerHTML = `
       <h3>Errore WebGL</h3>
-      <p>Il tuo browser o dispositivo non supporta WebGL.</p>
-      <p style="font-size: 12px; margin-top: 10px;">${error}</p>
+      <p>${message}</p>
+      <p style="font-size: 12px; margin-top: 10px;">Prova a ricaricare la pagina o abilita WebGL nelle impostazioni del browser.</p>
     `;
     document.body.appendChild(errorDiv);
+  };
 
-    throw error;
+  const rendererOptions: THREE.WebGLRendererParameters = {
+    antialias: true,
+    alpha: false,
+    powerPreference: "high-performance",
+    failIfMajorPerformanceCaveat: false,
+  };
+
+  let renderer: THREE.WebGLRenderer | null = null;
+
+  try {
+    renderer = new THREE.WebGLRenderer(rendererOptions);
+    console.log("createRenderer() - WebGLRenderer creato");
+  } catch (error) {
+    console.warn("createRenderer() - WebGLRenderer fallito, provo WebGL1 con canvas manuale", error);
+    try {
+      const fallbackCanvas = document.createElement('canvas');
+      const fallbackContext = fallbackCanvas.getContext('webgl', {
+        antialias: true,
+        preserveDrawingBuffer: false,
+      });
+
+      if (!fallbackContext) {
+        throw new Error("Fallback WebGL context non disponibile");
+      }
+
+      renderer = new THREE.WebGLRenderer({
+        ...rendererOptions,
+        canvas: fallbackCanvas,
+        context: fallbackContext as WebGLRenderingContext,
+      });
+      console.log("createRenderer() - Renderer creato con contesto WebGL1 fallback");
+    } catch (fallbackError) {
+      console.error("ERRORE nella creazione del renderer WebGL:", fallbackError);
+      createCanvasErrorOverlay("Il tuo dispositivo non riesce a creare un contesto WebGL.");
+      throw fallbackError;
+    }
   }
+
+  if (!renderer.getContext()) {
+    console.error("createRenderer() - Context WebGL non disponibile");
+    createCanvasErrorOverlay("Impossibile inizializzare WebGL: contesto non disponibile.");
+    throw new Error("WebGL context unavailable");
+  }
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.setClearColor(new THREE.Color(GAME_CONFIG.cityFogColor));
+
+  // Gestisci perdita del contesto su device vecchi o lenti
+  renderer.domElement.addEventListener(
+    "webglcontextlost",
+    (event) => {
+      event.preventDefault();
+      console.error("WebGL context lost - mostro messaggio all'utente");
+      createCanvasErrorOverlay(
+        "Il rendering 3D è stato disattivato dal browser (contesto WebGL perso). Chiudi altre app o ricarica la pagina."
+      );
+    },
+    { passive: false }
+  );
+
+  // Stile canvas per posizionamento corretto
+  const canvas = renderer.domElement;
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.zIndex = '0';
+  canvas.id = 'game-canvas';
+
+  // Inserisci il canvas PRIMA dell'HUD per assicurarsi che sia dietro
+  const hud = document.getElementById('hud');
+  if (hud && hud.parentNode) {
+    hud.parentNode.insertBefore(canvas, hud);
+    console.log("Renderer canvas inserito prima dell'HUD");
+  } else {
+    document.body.insertBefore(canvas, document.body.firstChild);
+    console.log("Renderer canvas inserito come primo elemento del body");
+  }
+
+  console.log(`Canvas dimensioni: ${canvas.width}x${canvas.height}, style: ${canvas.style.width}x${canvas.style.height}`);
+  return renderer;
 }
 
 export function createCamera(): THREE.PerspectiveCamera {
