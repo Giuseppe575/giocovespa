@@ -75,6 +75,7 @@ let gameOverCooldown = 0;
 let cameraShakeIntensity = 0;
 let pendingStart = false;
 let initCompleted = false;
+let startGraceTime = 0;
 
 async function initAudio() {
   const AudioContextCtor =
@@ -427,6 +428,7 @@ function resetGameState() {
   turboTimeLeft = 0;
   cameraShakeIntensity = 0;
   gameOverCooldown = 0;
+  startGraceTime = 2.5; // secondi di strada libera all'avvio
 
   // Reset input
   input.left = false;
@@ -587,6 +589,9 @@ function animate() {
   const t = now();
   const dt = Math.min(0.05, t - lastTime);
   lastTime = t;
+  if (startGraceTime > 0 && gameState === "RUNNING") {
+    startGraceTime = Math.max(0, startGraceTime - dt);
+  }
 
   if (gameState === "RUNNING") {
     updatePlayer(dt);
@@ -705,7 +710,7 @@ function updateObstacles(dt: number) {
   const MAX_OBSTACLES = 4; // Only allow 4 obstacles at a time
 
   const forwardZ = cameraZ - GAME_CONFIG.spawnDistanceMax;
-  if (lastSpawnZ > forwardZ && world.obstacles.length < MAX_OBSTACLES) {
+  if (startGraceTime <= 0 && lastSpawnZ > forwardZ && world.obstacles.length < MAX_OBSTACLES) {
     const spawnZ =
       cameraZ -
       (GAME_CONFIG.spawnDistanceMin +
@@ -770,6 +775,8 @@ function updateScore(dt: number) {
 }
 
 function checkCollisions() {
+  if (startGraceTime > 0) return;
+
   const p = world.player;
   const px = p.mesh.position.x;
   const pz = p.mesh.position.z;
