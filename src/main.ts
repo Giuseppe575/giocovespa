@@ -9,6 +9,7 @@ const setupButtonsImmediate = () => {
   // Se l'utente tocca prima che l'init sia finita, accodiamo lo start
   let gameReady = false;
   let queuedStart = false;
+  let safetyReleased = false;
 
   const handleStart = () => {
     if (!gameReady) {
@@ -51,6 +52,8 @@ const setupButtonsImmediate = () => {
 
   // Funzione da richiamare dopo l'init per riattivare i pulsanti
   const markReady = () => {
+    if (safetyReleased) return;
+    safetyReleased = true;
     gameReady = true;
     if (playBtn) {
       playBtn.disabled = false;
@@ -65,7 +68,20 @@ const setupButtonsImmediate = () => {
     }
   };
 
-  return { markReady };
+  // Fallback di sicurezza: se init dovesse bloccarsi, riattiva comunque il pulsante
+  const safetyTimeout = window.setTimeout(() => {
+    if (!safetyReleased) {
+      console.warn("Timeout di sicurezza: riattivo il pulsante GIOCA.");
+      markReady();
+    }
+  }, 4000);
+
+  // Permette di cancellare il timeout quando non serve più
+  const clearSafety = () => {
+    window.clearTimeout(safetyTimeout);
+  };
+
+  return { markReady, clearSafety };
 };
 
 // Inizializza il gioco
@@ -79,6 +95,10 @@ const init = async () => {
     buttons?.markReady();
   } catch (err) {
     console.error("Errore inizializzazione:", err);
+    // In caso di errore, comunque sblocca i pulsanti così l'utente può riprovare
+    buttons?.markReady();
+  } finally {
+    buttons?.clearSafety();
   }
 };
 
