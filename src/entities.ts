@@ -10,8 +10,6 @@ import {
 } from "./utils";
 
 export function createRenderer(): THREE.WebGLRenderer {
-  console.log("createRenderer() - Inizio creazione renderer");
-
   const createCanvasErrorOverlay = (message: string) => {
     const errorDiv = document.createElement('div');
     errorDiv.style.position = 'fixed';
@@ -44,7 +42,6 @@ export function createRenderer(): THREE.WebGLRenderer {
 
   try {
     renderer = new THREE.WebGLRenderer(rendererOptions);
-    console.log("createRenderer() - WebGLRenderer creato");
   } catch (error) {
     console.warn("createRenderer() - WebGLRenderer fallito, provo WebGL1 con canvas manuale", error);
     try {
@@ -63,7 +60,6 @@ export function createRenderer(): THREE.WebGLRenderer {
         canvas: fallbackCanvas,
         context: fallbackContext as WebGLRenderingContext,
       });
-      console.log("createRenderer() - Renderer creato con contesto WebGL1 fallback");
     } catch (fallbackError) {
       console.error("ERRORE nella creazione del renderer WebGL:", fallbackError);
       createCanvasErrorOverlay("Il tuo dispositivo non riesce a creare un contesto WebGL.");
@@ -109,13 +105,9 @@ export function createRenderer(): THREE.WebGLRenderer {
   const hud = document.getElementById('hud');
   if (hud && hud.parentNode) {
     hud.parentNode.insertBefore(canvas, hud);
-    console.log("Renderer canvas inserito prima dell'HUD");
   } else {
     document.body.insertBefore(canvas, document.body.firstChild);
-    console.log("Renderer canvas inserito come primo elemento del body");
   }
-
-  console.log(`Canvas dimensioni: ${canvas.width}x${canvas.height}, style: ${canvas.style.width}x${canvas.style.height}`);
   return renderer;
 }
 
@@ -722,7 +714,6 @@ export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: nu
   if (freeLanes.length > 0) {
     // Pick a random free lane
     laneIndex = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-    console.log(`Spawning in FREE lane ${laneIndex}. Free lanes: [${freeLanes.join(', ')}]`);
   } else {
     // If no completely free lanes, pick the least occupied
     let minOccupancy = Infinity;
@@ -734,7 +725,6 @@ export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: nu
         laneIndex = i;
       }
     }
-    console.log(`No free lanes! Using least occupied lane ${laneIndex} (${minOccupancy} obstacles)`);
   }
 
   const laneOffset =
