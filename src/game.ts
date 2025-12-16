@@ -76,6 +76,12 @@ let cameraShakeIntensity = 0;
 let pendingStart = false;
 let initCompleted = false;
 let startGraceTime = 0;
+let hudUpdateTimer = 0;
+const HUD_UPDATE_INTERVAL = 1 / 20; // Aggiorna l'HUD a 20 FPS per ridurre gli accessi al DOM
+
+const cameraBaseOffset = new THREE.Vector3();
+const cameraTargetPos = new THREE.Vector3();
+const cameraLookAt = new THREE.Vector3();
 
 async function initAudio() {
   const AudioContextCtor =
@@ -234,17 +240,12 @@ function playCrash() {
 }
 
 export async function initGame() {
-  console.log("initGame() - Avvio inizializzazione gioco...");
   const scene = createScene();
-  console.log("initGame() - Scene creata");
   const camera = createCamera();
-  console.log("initGame() - Camera creata");
   const renderer = createRenderer();
-  console.log("initGame() - Renderer creato e aggiunto al DOM");
   const clock = new THREE.Clock();
 
   addEventListeners();
-  console.log("initGame() - Event listeners aggiunti");
 
   const cityFogColor = new THREE.Color(GAME_CONFIG.cityFogColor);
   const playerMesh = createVespaWithRider();
@@ -284,10 +285,8 @@ export async function initGame() {
     vehiclesPool,
     cityFogColor,
   };
-  console.log("initGame() - World inizializzato:", !!world);
 
   await initUI();
-  console.log("initGame() - UI inizializzata");
   try {
     await initAudio();
   } catch (err) {
@@ -330,10 +329,8 @@ export async function initGame() {
 
   window.addEventListener("resize", onResize);
   onResize();
-  console.log("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
   initCompleted = true;
   if (pendingStart) {
-    console.log("initGame() - Avvio accodato trovato, faccio partire il gioco");
     pendingStart = false;
     manualStartGame();
   }
@@ -429,6 +426,7 @@ function resetGameState() {
   cameraShakeIntensity = 0;
   gameOverCooldown = 0;
   startGraceTime = 2.5; // secondi di strada libera all'avvio
+  hudUpdateTimer = 0;
 
   // Reset input
   input.left = false;
@@ -485,7 +483,6 @@ let isStartingGame = false;
 export function manualStartGame() {
   if (!world) {
     pendingStart = true;
-    console.log("manualStartGame() chiamato ma world non è pronto, accodo start.");
     return;
   }
   if (isStartingGame) return;
@@ -521,7 +518,6 @@ function bindHoldButton(
   const handlePress = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log(`Pulsante ${button.textContent} premuto`);
 
     // Feedback visivo
     button.style.transform = 'scale(0.95)';
@@ -538,7 +534,6 @@ function bindHoldButton(
   const handleRelease = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log(`Pulsante ${button.textContent} rilasciato`);
 
     // Rimuovi feedback visivo
     button.style.transform = 'scale(1)';
@@ -560,8 +555,6 @@ function bindHoldButton(
   // Fallback per mouse
   button.addEventListener("mousedown", handlePress);
   button.addEventListener("mouseup", handleRelease);
-
-  console.log(`Event listeners aggiunti al pulsante ${button.textContent}`);
 }
 
 function onResize() {
@@ -572,19 +565,9 @@ function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-let animateFrameCount = 0;
-
 function animate() {
   requestAnimationFrame(animate);
   if (!world) return;
-
-  animateFrameCount++;
-  if (animateFrameCount === 1) {
-    console.log("animate() - Primo frame!");
-  }
-  if (animateFrameCount % 100 === 0) {
-    console.log(`animate() - Frame ${animateFrameCount}, gameState=${gameState}, speed=${world.player.speed.toFixed(1)}`);
-  }
 
   const t = now();
   const dt = Math.min(0.05, t - lastTime);
@@ -609,14 +592,12 @@ function animate() {
 function updatePlayer(dt: number) {
   const p = world.player;
 
-  // Speed control con logging
+  // Speed control
   if (input.up) {
     p.targetSpeed += 18 * dt;
-    if (Math.random() < 0.1) console.log(`ACCELERA: targetSpeed=${p.targetSpeed.toFixed(1)}`);
   }
   if (input.down) {
     p.targetSpeed -= 26 * dt;
-    if (Math.random() < 0.1) console.log(`FRENA: targetSpeed=${p.targetSpeed.toFixed(1)}`);
   }
   p.targetSpeed = clamp(p.targetSpeed, p.minSpeed, p.maxSpeed);
 
@@ -674,8 +655,12 @@ function updatePlayer(dt: number) {
 
   updateEngineSound(p.speed);
 
-  const ui = getUI();
-  if (ui) updateHUD(scoreSystem, p.speed, p.turboCharge);
+  hudUpdateTimer += dt;
+  if (hudUpdateTimer >= HUD_UPDATE_INTERVAL) {
+    hudUpdateTimer = 0;
+    const ui = getUI();
+    if (ui) updateHUD(scoreSystem, p.speed, p.turboCharge);
+  }
 }
 
 function updateObstacles(dt: number) {
@@ -686,24 +671,27 @@ function updateObstacles(dt: number) {
   const dz = p.speed * dt;
 
   // Road + decor scroll
-  world.roadSegments.forEach((seg) => {
+  for (let i = 0; i < world.roadSegments.length; i++) {
+    const seg = world.roadSegments[i];
     seg.position.z += dz;
     if (seg.position.z > 10) {
       seg.position.z -= GAME_CONFIG.roadLength;
     }
-  });
-  world.buildings.forEach((b) => {
+  }
+  for (let i = 0; i < world.buildings.length; i++) {
+    const b = world.buildings[i];
     b.position.z += dz * 0.96;
     if (b.position.z > 5) {
       b.position.z -= 200;
     }
-  });
-  world.streetLights.forEach((l) => {
+  }
+  for (let i = 0; i < world.streetLights.length; i++) {
+    const l = world.streetLights[i];
     l.position.z += dz * 0.98;
     if (l.position.z > 5) {
       l.position.z -= 400;
     }
-  });
+  }
 
   // Spawn new obstacles ahead of player
   // IMPORTANT: Limit max obstacles on screen to ensure playability
@@ -718,8 +706,6 @@ function updateObstacles(dt: number) {
           (GAME_CONFIG.spawnDistanceMax -
             GAME_CONFIG.spawnDistanceMin));
     lastSpawnZ = spawnZ;
-
-    console.log(`Attempting to spawn obstacle. Current count: ${world.obstacles.length}/${MAX_OBSTACLES}`);
     const spawnedObstacle = spawnObstacle(world, spawnZ, lastSpawnedLanes);
 
     // Track last 3 spawned lanes to ensure variety
@@ -736,7 +722,6 @@ function updateObstacles(dt: number) {
 
     // More aggressive cleanup - remove obstacles that are behind the player
     if (o.mesh.position.z > p.mesh.position.z + 10) {
-      console.log(`Removing obstacle behind player at z=${o.mesh.position.z.toFixed(2)}`);
       world.scene.remove(o.mesh);
       world.obstacles.splice(i, 1);
       continue;
@@ -754,13 +739,6 @@ function updateObstacles(dt: number) {
   }
 
   // Debug: log all obstacle positions
-  if (Math.random() < 0.02) { // Log occasionally
-    console.log(`Active obstacles: ${world.obstacles.length}`);
-    world.obstacles.forEach((o, i) => {
-      const relZ = o.mesh.position.z - p.mesh.position.z;
-      console.log(`  [${i}] lane=${o.laneIndex}, x=${o.mesh.position.x.toFixed(2)}, relZ=${relZ.toFixed(2)}`);
-    });
-  }
 }
 
 function updateScore(dt: number) {
@@ -832,7 +810,7 @@ async function triggerGameOver() {
 function updateCamera(dt: number) {
   const p = world.player;
   const cam = world.camera;
-  const baseOffset = GAME_CONFIG.cameraBaseOffset.clone();
+  cameraBaseOffset.copy(GAME_CONFIG.cameraBaseOffset);
 
   const speedFactor = clamp(
     (p.speed - GAME_CONFIG.baseSpeed) /
@@ -842,33 +820,33 @@ function updateCamera(dt: number) {
   );
 
   // dynamic camera distance
-  baseOffset.z = 8.2 + speedFactor * 3.5;
-  baseOffset.y = 3.4 + speedFactor * 0.9;
+  cameraBaseOffset.z = 8.2 + speedFactor * 3.5;
+  cameraBaseOffset.y = 3.4 + speedFactor * 0.9;
 
-  const targetPos = new THREE.Vector3(
+  cameraTargetPos.set(
     p.mesh.position.x * 0.35,
-    p.mesh.position.y + baseOffset.y,
-    p.mesh.position.z + baseOffset.z
+    p.mesh.position.y + cameraBaseOffset.y,
+    p.mesh.position.z + cameraBaseOffset.z
   );
 
   // camera shake
   if (cameraShakeIntensity > 0) {
     const t = now() * 8;
-    targetPos.x += shakeValue(t, 0.25 * cameraShakeIntensity);
-    targetPos.y += shakeValue(t + 10, 0.18 * cameraShakeIntensity);
+    cameraTargetPos.x += shakeValue(t, 0.25 * cameraShakeIntensity);
+    cameraTargetPos.y += shakeValue(t + 10, 0.18 * cameraShakeIntensity);
     cameraShakeIntensity = Math.max(
       0,
       cameraShakeIntensity - dt * 2.3
     );
   }
 
-  lerpVec3(cam.position, targetPos, 5 * dt);
+  lerpVec3(cam.position, cameraTargetPos, 5 * dt);
 
-  const lookAt = new THREE.Vector3(
+  cameraLookAt.set(
     p.mesh.position.x,
     p.mesh.position.y + 1.5,
     p.mesh.position.z - 6
   );
-  cam.lookAt(lookAt);
+  cam.lookAt(cameraLookAt);
 }
 

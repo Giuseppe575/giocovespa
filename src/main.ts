@@ -32,7 +32,6 @@ const setupButtonsImmediate = () => {
 
     if (!gameReady) {
       queuedStart = true;
-      console.log("Start richiesto prima che l'init sia completata: accodo.");
       return;
     }
 
