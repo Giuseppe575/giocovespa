@@ -1,8 +1,12 @@
 
 import { initGame, manualStartGame } from "./game";
 
+let initFailed = false;
+let isInitializing = false;
+let buttonsController: ReturnType<typeof setupButtonsImmediate> | null = null;
+
 // Imposta handler SUBITO quando il DOM è pronto
-const setupButtonsImmediate = () => {
+function setupButtonsImmediate() {
   const playBtn = document.getElementById("play-btn") as HTMLButtonElement | null;
   const restartBtn = document.getElementById("restart-btn") as HTMLButtonElement | null;
   let startRequested = false;
@@ -29,6 +33,15 @@ const setupButtonsImmediate = () => {
     startRequested = true;
     // Nascondi subito gli overlay, anche se il gioco non è ancora pronto
     hideOverlays();
+
+    // Se l'init precedente è fallito, riprova a inizializzare
+    if (initFailed) {
+      queuedStart = true;
+      if (!isInitializing) {
+        init();
+      }
+      return;
+    }
 
     if (!gameReady) {
       queuedStart = true;
@@ -70,9 +83,9 @@ const setupButtonsImmediate = () => {
 
   // Funzione da richiamare dopo l'init per riattivare i pulsanti
   const markReady = () => {
-    if (safetyReleased) return;
     safetyReleased = true;
     gameReady = true;
+    initFailed = false;
     if (playBtn) {
       playBtn.disabled = false;
       playBtn.textContent = "GIOCA";
@@ -90,6 +103,19 @@ const setupButtonsImmediate = () => {
     }
   };
 
+  const markFailed = () => {
+    gameReady = false;
+    initFailed = true;
+    safetyReleased = true;
+    if (playBtn) {
+      playBtn.disabled = false;
+      playBtn.textContent = "RIPROVA";
+    }
+    if (restartBtn) {
+      restartBtn.disabled = false;
+    }
+  };
+
   // Fallback di sicurezza: se init dovesse bloccarsi, riattiva comunque il pulsante
   const safetyTimeout = window.setTimeout(() => {
     if (!safetyReleased) {
@@ -103,13 +129,22 @@ const setupButtonsImmediate = () => {
     window.clearTimeout(safetyTimeout);
   };
 
-  return { markReady, clearSafety };
+  return { markReady, clearSafety, markFailed };
+}
+
+const getButtonsController = () => {
+  if (!buttonsController) {
+    buttonsController = setupButtonsImmediate();
+  }
+  return buttonsController;
 };
 
 // Inizializza il gioco
-const init = async () => {
+async function init() {
   // Setup buttons prima di tutto
-  const buttons = setupButtonsImmediate();
+  const buttons = getButtonsController();
+  isInitializing = true;
+  initFailed = false;
 
   // Poi inizializza il gioco
   try {
@@ -117,12 +152,13 @@ const init = async () => {
     buttons?.markReady();
   } catch (err) {
     console.error("Errore inizializzazione:", err);
-    // In caso di errore, comunque sblocca i pulsanti così l'utente può riprovare
-    buttons?.markReady();
+    // In caso di errore, mostra Riprova e riprova l'init alla prossima pressione
+    buttons?.markFailed();
   } finally {
+    isInitializing = false;
     buttons?.clearSafety();
   }
-};
+}
 
 // Avvia quando il DOM è pronto
 if (document.readyState === "loading") {
