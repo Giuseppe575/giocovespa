@@ -85,29 +85,28 @@ let pendingStart = false;
 let startGraceTime = 0;
 let hudUpdateTimer = 0;
 const HUD_UPDATE_INTERVAL = 1 / 20;
-let curvePhase = 0;
+let curveDistance = 0;
 let audioInitPromise: Promise<void> | null = null;
 const cameraBaseOffset = new THREE.Vector3();
 const cameraTargetPos = new THREE.Vector3();
 const cameraLookAt = new THREE.Vector3();
 
-function getCurveOffset(z: number): number {
+function getCurveOffset(): number {
   const straightLen = GAME_CONFIG.curveStraightLength;
   const curveLen = GAME_CONFIG.curveLength;
   const cycleLen = straightLen + curveLen + straightLen;
-  const progress = curvePhase + Math.max(0, -z);
-  const local = progress % cycleLen;
+  const local = curveDistance % cycleLen;
   if (local < straightLen) return 0;
-  if (local > straightLen + curveLen) return 0;
+  if (local >= straightLen + curveLen) return 0;
   const curveT = (local - straightLen) / curveLen;
-  const direction = Math.floor(progress / cycleLen) % 2 === 0 ? 1 : -1;
+  const direction = Math.floor(curveDistance / cycleLen) % 2 === 0 ? 1 : -1;
   return Math.sin(curveT * Math.PI) * GAME_CONFIG.curveAmplitude * direction;
 }
 
 function applyCurveToObject(obj: THREE.Object3D, factor = 1) {
   const baseX = typeof obj.userData.baseX === "number" ? obj.userData.baseX : obj.position.x;
   obj.userData.baseX = baseX;
-  obj.position.x = baseX + getCurveOffset(obj.position.z) * factor;
+  obj.position.x = baseX + getCurveOffset() * factor;
 }
 
 function isHazard(type: string) {
@@ -481,7 +480,7 @@ function resetGameState() {
   gameOverCooldown = 0;
   startGraceTime = 2.5; // secondi di strada libera all'avvio
   hudUpdateTimer = 0;
-  curvePhase = 0;
+  curveDistance = 0;
 
   // Reset input
   input.left = false;
@@ -718,7 +717,7 @@ function updatePlayer(dt: number) {
     ((GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth + 0.4;
   p.laneX += lateral * p.lateralSpeed * dt;
   p.laneX = clamp(p.laneX, -maxX, maxX);
-  p.mesh.position.x = p.laneX + getCurveOffset(p.mesh.position.z);
+  p.mesh.position.x = p.laneX + getCurveOffset();
 
   // Lean effect
   const targetRotZ = -lateral * 0.25;
@@ -764,7 +763,7 @@ function updateObstacles(dt: number) {
     }
   });
 
-  curvePhase += dz * GAME_CONFIG.curveSpeed;
+  curveDistance += dz * GAME_CONFIG.curveSpeed;
   world.roadSegments.forEach((seg) => applyCurveToObject(seg, 1));
   world.buildings.forEach((b) => applyCurveToObject(b, 0.7));
   world.streetLights.forEach((l) => applyCurveToObject(l, 0.9));
@@ -840,7 +839,7 @@ function updateObstacles(dt: number) {
   for (let i = world.obstacles.length - 1; i >= 0; i--) {
     const o = world.obstacles[i];
     o.mesh.position.z += dz;
-    o.mesh.position.x = o.laneOffset + getCurveOffset(o.mesh.position.z);
+    o.mesh.position.x = o.laneOffset + getCurveOffset();
 
     if (o.type === "COIN") {
       o.mesh.rotation.y += dt * 3;
