@@ -92,10 +92,16 @@ const cameraTargetPos = new THREE.Vector3();
 const cameraLookAt = new THREE.Vector3();
 
 function getCurveOffset(z: number): number {
-  return (
-    Math.sin((z + curvePhase) * GAME_CONFIG.curveFrequency) *
-    GAME_CONFIG.curveAmplitude
-  );
+  const straightLen = GAME_CONFIG.curveStraightLength;
+  const curveLen = GAME_CONFIG.curveLength;
+  const cycleLen = straightLen + curveLen + straightLen;
+  const progress = curvePhase + Math.max(0, -z);
+  const local = progress % cycleLen;
+  if (local < straightLen) return 0;
+  if (local > straightLen + curveLen) return 0;
+  const curveT = (local - straightLen) / curveLen;
+  const direction = Math.floor(progress / cycleLen) % 2 === 0 ? 1 : -1;
+  return Math.sin(curveT * Math.PI) * GAME_CONFIG.curveAmplitude * direction;
 }
 
 function applyCurveToObject(obj: THREE.Object3D, factor = 1) {
