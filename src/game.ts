@@ -1,4 +1,3 @@
-
 import * as THREE from "three";
 import {
   AudioSystem,
@@ -26,6 +25,8 @@ import {
   createStreetLights,
   createVespaWithRider,
   spawnObstacle,
+  spawnRamp,
+  spawnCoin,
 } from "./entities";
 import {
   animateHUDPop,
@@ -41,6 +42,10 @@ import {
 } from "./ui";
 import { persistence } from "./libs/persistence";
 
+const logDebug = (...args: unknown[]) => {
+  if (GAME_CONFIG.debug) console.log(...args);
+};
+
 let world: World;
 let gameState: GameState = "MENU";
 let input: InputState = {
@@ -54,6 +59,7 @@ let scoreSystem: ScoreSystem = {
   score: 0,
   highScore: 0,
   distance: 0,
+  coins: 0,
   combo: 1,
   lastComboTime: 0,
 };
@@ -68,20 +74,39 @@ let audio: AudioSystem = {
 };
 
 let lastSpawnZ = -25;
-let lastSpawnedLanes: number[] = []; // Track last spawned lanes to avoid blocking all lanes
+let lastCoinSpawnZ = -25;
+let lastRampSpawnZ = -25;
+let lastSpawnedLanes: number[] = [];
 let lastTime = now();
 let turboTimeLeft = 0;
 let gameOverCooldown = 0;
 let cameraShakeIntensity = 0;
 let pendingStart = false;
-let initCompleted = false;
 let startGraceTime = 0;
 let hudUpdateTimer = 0;
-const HUD_UPDATE_INTERVAL = 1 / 20; // Aggiorna l'HUD a 20 FPS per ridurre gli accessi al DOM
-
+const HUD_UPDATE_INTERVAL = 1 / 20;
+let curvePhase = 0;
+let audioInitPromise: Promise<void> | null = null;
 const cameraBaseOffset = new THREE.Vector3();
 const cameraTargetPos = new THREE.Vector3();
 const cameraLookAt = new THREE.Vector3();
+
+function getCurveOffset(z: number): number {
+  return (
+    Math.sin((z + curvePhase) * GAME_CONFIG.curveFrequency) *
+    GAME_CONFIG.curveAmplitude
+  );
+}
+
+function applyCurveToObject(obj: THREE.Object3D, factor = 1) {
+  const baseX = typeof obj.userData.baseX === "number" ? obj.userData.baseX : obj.position.x;
+  obj.userData.baseX = baseX;
+  obj.position.x = baseX + getCurveOffset(obj.position.z) * factor;
+}
+
+function isHazard(type: string) {
+  return type === "CAR" || type === "BARRIER" || type === "CONE";
+}
 
 async function initAudio() {
   const AudioContextCtor =
@@ -96,7 +121,7 @@ async function initAudio() {
   try {
     audio.context = new AudioContextCtor();
   } catch (err) {
-    console.warn("Impossibile creare l'audio, il gioco proseguirà silenzioso.", err);
+    console.warn("Impossibile creare l'audio, il gioco prosegue silenzioso.", err);
     audio.muted = true;
     return;
   }
@@ -107,7 +132,7 @@ async function initAudio() {
     try {
       await ctx.resume();
     } catch (err) {
-      console.warn("Ripresa dell'audio bloccata, verrà disabilitato.", err);
+      console.warn("Ripresa dell'audio bloccata, verra disabilitato.", err);
       audio.muted = true;
     }
   }
@@ -148,10 +173,19 @@ async function initAudio() {
   audio.engineGain = mix;
   audio.engineFilter = filter;
 
-  const muteStored = await persistence.getItem(PERSISTENCE_KEYS.MUTE);
-  if (muteStored === "1") {
-    audio.muted = true;
+  if (audio.muted) {
     mix.gain.value = 0;
+  }
+}
+
+async function ensureAudioReady() {
+  if (audio.context) return;
+  if (audioInitPromise) return audioInitPromise;
+  audioInitPromise = initAudio();
+  try {
+    await audioInitPromise;
+  } finally {
+    audioInitPromise = null;
   }
 }
 
@@ -240,12 +274,17 @@ function playCrash() {
 }
 
 export async function initGame() {
+  logDebug("initGame() - Avvio inizializzazione gioco...");
   const scene = createScene();
+  logDebug("initGame() - Scene creata");
   const camera = createCamera();
+  logDebug("initGame() - Camera creata");
   const renderer = createRenderer();
+  logDebug("initGame() - Renderer creato e aggiunto al DOM");
   const clock = new THREE.Clock();
 
   addEventListeners();
+  logDebug("initGame() - Event listeners aggiunti");
 
   const cityFogColor = new THREE.Color(GAME_CONFIG.cityFogColor);
   const playerMesh = createVespaWithRider();
@@ -258,6 +297,9 @@ export async function initGame() {
     minSpeed: GAME_CONFIG.minSpeed,
     lateralSpeed: GAME_CONFIG.lateralSpeed,
     laneWidth: GAME_CONFIG.laneWidth,
+    laneX: 0,
+    verticalVelocity: 0,
+    isJumping: false,
     turboCharge: 0,
     turboActive: false,
   };
@@ -285,12 +327,13 @@ export async function initGame() {
     vehiclesPool,
     cityFogColor,
   };
+  logDebug("initGame() - World inizializzato:", !!world);
 
   await initUI();
-  try {
-    await initAudio();
-  } catch (err) {
-    console.warn("Audio disabilitato, il gioco prosegue senza suoni.", err);
+  logDebug("initGame() - UI inizializzata");
+
+  const muteStored = await persistence.getItem(PERSISTENCE_KEYS.MUTE);
+  if (muteStored === "1") {
     audio.muted = true;
   }
 
@@ -303,10 +346,13 @@ export async function initGame() {
   // Setup button handlers (solo mute - play/restart gestiti in main.ts)
   const ui = getUI();
   if (ui) {
-    ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
+    ui.muteBtn.textContent = audio.muted ? "??" : "??";
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
-      ui.muteBtn.textContent = audio.muted ? "🔇" : "🔊";
+      ui.muteBtn.textContent = audio.muted ? "??" : "??";
+      if (!audio.muted && !audio.context) {
+        await ensureAudioReady();
+      }
       if (audio.muted) {
         if (audio.engineGain) audio.engineGain.gain.value = 0;
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
@@ -329,8 +375,9 @@ export async function initGame() {
 
   window.addEventListener("resize", onResize);
   onResize();
-  initCompleted = true;
+  logDebug("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
   if (pendingStart) {
+    logDebug("initGame() - Avvio accodato trovato, faccio partire il gioco");
     pendingStart = false;
     manualStartGame();
   }
@@ -394,8 +441,8 @@ function addEventListeners() {
   window.addEventListener("mousemove", (e) => {
     if (!world || gameState !== "RUNNING") return;
     const xNorm = (e.clientX / window.innerWidth) * 2 - 1;
-    world.player.mesh.position.x = THREE.MathUtils.lerp(
-      world.player.mesh.position.x,
+    world.player.laneX = THREE.MathUtils.lerp(
+      world.player.laneX,
       xNorm * (GAME_CONFIG.laneWidth),
       0.06
     );
@@ -405,8 +452,8 @@ function addEventListeners() {
     if (!world || gameState !== "RUNNING") return;
     const touch = e.touches[0];
     const xNorm = (touch.clientX / window.innerWidth) * 2 - 1;
-    world.player.mesh.position.x = THREE.MathUtils.lerp(
-      world.player.mesh.position.x,
+    world.player.laneX = THREE.MathUtils.lerp(
+      world.player.laneX,
       xNorm * (GAME_CONFIG.laneWidth),
       0.12
     );
@@ -418,6 +465,7 @@ function resetGameState() {
   // Reset punteggi
   scoreSystem.score = 0;
   scoreSystem.distance = 0;
+  scoreSystem.coins = 0;
   scoreSystem.combo = 1;
   scoreSystem.lastComboTime = now();
 
@@ -427,6 +475,7 @@ function resetGameState() {
   gameOverCooldown = 0;
   startGraceTime = 2.5; // secondi di strada libera all'avvio
   hudUpdateTimer = 0;
+  curvePhase = 0;
 
   // Reset input
   input.left = false;
@@ -448,11 +497,16 @@ function resetGameState() {
   world.player.targetSpeed = GAME_CONFIG.baseSpeed;
   world.player.turboCharge = 0;
   world.player.turboActive = false;
+  world.player.laneX = 0;
+  world.player.isJumping = false;
+  world.player.verticalVelocity = 0;
   world.player.mesh.position.set(0, 0, -5);
   world.player.mesh.rotation.set(0, 0, 0);
 
   // Reset spawn - metti lontano per evitare collisioni immediate
   lastSpawnZ = -50;
+  lastCoinSpawnZ = -50;
+  lastRampSpawnZ = -50;
   lastSpawnedLanes = [];
   lastTime = now();
 }
@@ -470,9 +524,10 @@ async function startRun() {
   // Avvia il gioco immediatamente
   gameState = "RUNNING";
   lastTime = now();
-  flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
+  flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
   // Audio in background senza bloccare
+  ensureAudioReady().catch(() => {});
   resumeAudioContext().catch(() => {});
 }
 
@@ -483,6 +538,7 @@ let isStartingGame = false;
 export function manualStartGame() {
   if (!world) {
     pendingStart = true;
+    logDebug("manualStartGame() chiamato ma world non e pronto, accodo start.");
     return;
   }
   if (isStartingGame) return;
@@ -497,9 +553,10 @@ export function manualStartGame() {
     hideGameOver();
     gameState = "RUNNING";
     lastTime = now();
-    flashMessage("Vai! Evita auto e ostacoli • Carica il turbo", 1.8);
+    flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
     // Audio non bloccante
+    ensureAudioReady().catch(() => {});
     resumeAudioContext().catch(() => {});
 
     isStartingGame = false;
@@ -523,7 +580,7 @@ function bindHoldButton(
     button.style.transform = 'scale(0.95)';
     button.style.background = 'rgba(100, 200, 255, 0.9)';
 
-    // Se il gioco è in pausa/menù, avvialo subito al primo tap sui controlli mobili
+    // Se il gioco e in pausa/menu, avvialo subito al primo tap sui controlli mobili
     if (gameState !== "RUNNING") {
       manualStartGame();
     }
@@ -542,7 +599,7 @@ function bindHoldButton(
     onRelease();
   };
 
-  // Usa sia touch che pointer events per massima compatibilità
+  // Usa sia touch che pointer events per massima compatibilita
   button.addEventListener("touchstart", handlePress, { passive: false, capture: true });
   button.addEventListener("touchend", handleRelease, { passive: false, capture: true });
   button.addEventListener("touchcancel", handleRelease, { passive: false, capture: true });
@@ -635,6 +692,17 @@ function updatePlayer(dt: number) {
 
   p.speed = lerp(p.speed, p.targetSpeed, 0.9 * dt);
 
+  // Jump physics
+  if (p.isJumping) {
+    p.verticalVelocity -= GAME_CONFIG.gravity * dt;
+    p.mesh.position.y += p.verticalVelocity * dt;
+    if (p.mesh.position.y <= 0) {
+      p.mesh.position.y = 0;
+      p.verticalVelocity = 0;
+      p.isJumping = false;
+    }
+  }
+
   // Lateral movement
   let lateral = 0;
   if (input.left) lateral -= 1;
@@ -642,8 +710,9 @@ function updatePlayer(dt: number) {
 
   const maxX =
     ((GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth + 0.4;
-  p.mesh.position.x += lateral * p.lateralSpeed * dt;
-  p.mesh.position.x = clamp(p.mesh.position.x, -maxX, maxX);
+  p.laneX += lateral * p.lateralSpeed * dt;
+  p.laneX = clamp(p.laneX, -maxX, maxX);
+  p.mesh.position.x = p.laneX + getCurveOffset(p.mesh.position.z);
 
   // Lean effect
   const targetRotZ = -lateral * 0.25;
@@ -654,7 +723,6 @@ function updatePlayer(dt: number) {
   p.mesh.rotation.x = lerp(p.mesh.rotation.x, targetRotX, 2 * dt);
 
   updateEngineSound(p.speed);
-
   hudUpdateTimer += dt;
   if (hudUpdateTimer >= HUD_UPDATE_INTERVAL) {
     hudUpdateTimer = 0;
@@ -671,34 +739,50 @@ function updateObstacles(dt: number) {
   const dz = p.speed * dt;
 
   // Road + decor scroll
-  for (let i = 0; i < world.roadSegments.length; i++) {
-    const seg = world.roadSegments[i];
+  world.roadSegments.forEach((seg) => {
     seg.position.z += dz;
     if (seg.position.z > 10) {
       seg.position.z -= GAME_CONFIG.roadLength;
     }
-  }
-  for (let i = 0; i < world.buildings.length; i++) {
-    const b = world.buildings[i];
+  });
+  world.buildings.forEach((b) => {
     b.position.z += dz * 0.96;
     if (b.position.z > 5) {
       b.position.z -= 200;
     }
-  }
-  for (let i = 0; i < world.streetLights.length; i++) {
-    const l = world.streetLights[i];
+  });
+  world.streetLights.forEach((l) => {
     l.position.z += dz * 0.98;
     if (l.position.z > 5) {
       l.position.z -= 400;
     }
-  }
+  });
+
+  curvePhase += dz * GAME_CONFIG.curveSpeed;
+  world.roadSegments.forEach((seg) => applyCurveToObject(seg, 1));
+  world.buildings.forEach((b) => applyCurveToObject(b, 0.7));
+  world.streetLights.forEach((l) => applyCurveToObject(l, 0.9));
 
   // Spawn new obstacles ahead of player
   // IMPORTANT: Limit max obstacles on screen to ensure playability
-  const MAX_OBSTACLES = 4; // Only allow 4 obstacles at a time
+  const MAX_HAZARDS = 4; // Only allow 4 hazards at a time
+  const MAX_RAMPS = 3;
+  const MAX_COINS = 30;
+  let hazardCount = 0;
+  let rampCount = 0;
+  let coinCount = 0;
+  for (const o of world.obstacles) {
+    if (isHazard(o.type)) {
+      hazardCount++;
+    } else if (o.type === "RAMP") {
+      rampCount++;
+    } else if (o.type === "COIN") {
+      coinCount++;
+    }
+  }
 
   const forwardZ = cameraZ - GAME_CONFIG.spawnDistanceMax;
-  if (startGraceTime <= 0 && lastSpawnZ > forwardZ && world.obstacles.length < MAX_OBSTACLES) {
+  if (startGraceTime <= 0 && lastSpawnZ > forwardZ && hazardCount < MAX_HAZARDS) {
     const spawnZ =
       cameraZ -
       (GAME_CONFIG.spawnDistanceMin +
@@ -706,6 +790,7 @@ function updateObstacles(dt: number) {
           (GAME_CONFIG.spawnDistanceMax -
             GAME_CONFIG.spawnDistanceMin));
     lastSpawnZ = spawnZ;
+
     const spawnedObstacle = spawnObstacle(world, spawnZ, lastSpawnedLanes);
 
     // Track last 3 spawned lanes to ensure variety
@@ -715,10 +800,46 @@ function updateObstacles(dt: number) {
     }
   }
 
+  const rampForwardZ = cameraZ - GAME_CONFIG.rampSpawnDistanceMax;
+  if (startGraceTime <= 0 && rampCount < MAX_RAMPS && lastRampSpawnZ > rampForwardZ) {
+    const rampZ =
+      cameraZ -
+      (GAME_CONFIG.rampSpawnDistanceMin +
+        Math.random() *
+          (GAME_CONFIG.rampSpawnDistanceMax -
+            GAME_CONFIG.rampSpawnDistanceMin));
+    lastRampSpawnZ = rampZ;
+    if (Math.random() < GAME_CONFIG.rampSpawnChance) {
+      spawnRamp(world, rampZ, lastSpawnedLanes);
+    }
+  }
+
+  const coinForwardZ = cameraZ - GAME_CONFIG.coinSpawnDistanceMax;
+  if (coinCount < MAX_COINS && lastCoinSpawnZ > coinForwardZ) {
+    const coinZ =
+      cameraZ -
+      (GAME_CONFIG.coinSpawnDistanceMin +
+        Math.random() *
+          (GAME_CONFIG.coinSpawnDistanceMax -
+            GAME_CONFIG.coinSpawnDistanceMin));
+    lastCoinSpawnZ = coinZ;
+    const laneIndex = Math.floor(Math.random() * GAME_CONFIG.lanes);
+    spawnCoin(world, coinZ, laneIndex);
+    spawnCoin(world, coinZ - 1.6, laneIndex);
+    spawnCoin(world, coinZ - 3.2, laneIndex);
+    spawnCoin(world, coinZ - 4.8, laneIndex);
+  }
+
   // Move cars slightly or keep static; cleanup passed obstacles
   for (let i = world.obstacles.length - 1; i >= 0; i--) {
     const o = world.obstacles[i];
     o.mesh.position.z += dz;
+    o.mesh.position.x = o.laneOffset + getCurveOffset(o.mesh.position.z);
+
+    if (o.type === "COIN") {
+      o.mesh.rotation.y += dt * 3;
+      o.mesh.position.y = 0.6 + Math.sin((now() + o.mesh.position.z) * 2) * 0.08;
+    }
 
     // More aggressive cleanup - remove obstacles that are behind the player
     if (o.mesh.position.z > p.mesh.position.z + 10) {
@@ -730,15 +851,15 @@ function updateObstacles(dt: number) {
     // Mark as "passed" for scoring
     if (!o.passed && o.mesh.position.z > p.mesh.position.z) {
       o.passed = true;
-      scoreSystem.distance += 1;
-      scoreSystem.combo = clamp(scoreSystem.combo + 0.1, 1, 5);
-      scoreSystem.lastComboTime = now();
-      const ui = getUI();
-      if (ui) animateHUDPop(ui.streak, 0.16, 1.15);
+      if (isHazard(o.type)) {
+        scoreSystem.distance += 1;
+        scoreSystem.combo = clamp(scoreSystem.combo + 0.1, 1, 5);
+        scoreSystem.lastComboTime = now();
+        const ui = getUI();
+        if (ui) animateHUDPop(ui.streak, 0.16, 1.15);
+      }
     }
   }
-
-  // Debug: log all obstacle positions
 }
 
 function updateScore(dt: number) {
@@ -752,14 +873,35 @@ function updateScore(dt: number) {
   }
 }
 
+function awardCoin() {
+  scoreSystem.coins += 1;
+  scoreSystem.score += GAME_CONFIG.coinValue;
+  scoreSystem.combo = clamp(scoreSystem.combo + 0.15, 1, 6);
+  scoreSystem.lastComboTime = now();
+  const ui = getUI();
+  if (ui) animateHUDPop(ui.score, 0.12, 1.1);
+}
+
+function triggerJump() {
+  const p = world.player;
+  if (p.isJumping) return;
+  p.isJumping = true;
+  p.verticalVelocity = GAME_CONFIG.jumpVelocity;
+  cameraShakeIntensity = Math.max(cameraShakeIntensity, 0.4);
+  playWhoosh();
+  flashMessage("SALTO!", 0.6);
+}
+
 function checkCollisions() {
   if (startGraceTime > 0) return;
 
   const p = world.player;
   const px = p.mesh.position.x;
   const pz = p.mesh.position.z;
+  const py = p.mesh.position.y;
 
-  for (const o of world.obstacles) {
+  for (let i = world.obstacles.length - 1; i >= 0; i--) {
+    const o = world.obstacles[i];
     const oz = o.mesh.position.z;
     const relZ = oz - pz;
 
@@ -773,14 +915,29 @@ function checkCollisions() {
     const dx = px - ox;
     const dz = pz - oz;
     const distSq = dx * dx + dz * dz;
-    const dist = Math.sqrt(distSq);
 
     if (distSq < radius * radius) {
-      console.error(`COLLISION DETECTED!`);
-      console.error(`  Player: x=${px.toFixed(2)}, z=${pz.toFixed(2)}`);
-      console.error(`  Obstacle: x=${ox.toFixed(2)}, z=${oz.toFixed(2)}, lane=${o.laneIndex}, type=${o.type}`);
-      console.error(`  Distance: ${dist.toFixed(2)} (threshold: ${radius.toFixed(2)} for ${o.type})`);
-      console.error(`  Relative Z: ${relZ.toFixed(2)}`);
+      if (o.type === "COIN") {
+        if (!o.awarded) {
+          o.awarded = true;
+          awardCoin();
+        }
+        world.scene.remove(o.mesh);
+        world.obstacles.splice(i, 1);
+        continue;
+      }
+
+      if (o.type === "RAMP") {
+        world.scene.remove(o.mesh);
+        world.obstacles.splice(i, 1);
+        triggerJump();
+        continue;
+      }
+
+      if (py > GAME_CONFIG.jumpSafeHeight) {
+        continue;
+      }
+
       triggerGameOver();
       return;
     }
@@ -849,4 +1006,3 @@ function updateCamera(dt: number) {
   );
   cam.lookAt(cameraLookAt);
 }
-

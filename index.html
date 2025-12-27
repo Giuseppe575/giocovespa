@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Vespa City Ride 3D</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23ffb647'/%3E%3Ctext x='50' y='65' font-size='60' text-anchor='middle' fill='%230f1c2c' font-family='Arial'%3EV%3C/text%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./src/styles/index.css" />
     <style>
       body {
@@ -19,10 +19,12 @@
       <div class="hud-left">
         <div id="score-label" class="hud-label">PUNTI</div>
         <div id="score-value" class="hud-value">0</div>
-        <div id="speed-label" class="hud-label">VELOCITÀ</div>
+        <div id="speed-label" class="hud-label">VELOCITA</div>
         <div id="speed-value" class="hud-value">0 km/h</div>
         <div id="streak-label" class="hud-label">SERIE</div>
         <div id="streak-value" class="hud-value">x0</div>
+        <div id="coins-label" class="hud-label">MONETE</div>
+        <div id="coins-value" class="hud-value">0</div>
       </div>
       <div class="hud-center">
         <div id="message" class="hud-message"></div>
@@ -30,7 +32,7 @@
       <div class="hud-right">
         <div id="highscore-label" class="hud-label">RECORD</div>
         <div id="highscore-value" class="hud-value">0</div>
-        <button id="mute-btn" class="hud-button">🔊</button>
+        <button id="mute-btn" class="hud-button">??</button>
       </div>
     </div>
 
@@ -42,15 +44,15 @@
     <div id="menu-overlay" class="overlay visible">
       <div class="panel">
         <h1>Vespa City Ride 3D</h1>
-        <p>Guida la tua Vespa 5 attraverso la città, evita auto e ostacoli e colleziona punti.</p>
+        <p>Guida la tua Vespa 5 attraverso la citta, evita auto e ostacoli e colleziona punti.</p>
         <ul class="hint-list">
-          <li>← → / A D: sterza</li>
-          <li>W / ↑: accelera</li>
-          <li>S / ↓: rallenta</li>
+          <li>Freccia sinistra/destra o A D: sterza</li>
+          <li>W / Freccia su: accelera</li>
+          <li>S / Freccia giu: rallenta</li>
           <li>Spazio: turbo istantaneo (se carico)</li>
           <li>Mobile: trascina per sterzare, tieni premuto ACCELERA / FRENO</li>
         </ul>
-        <p class="note">Sopravvivi il più a lungo possibile senza collisioni per aumentare il moltiplicatore.</p>
+        <p class="note">Sopravvivi il piu a lungo possibile senza collisioni per aumentare il moltiplicatore.</p>
         <button id="play-btn">GIOCA</button>
       </div>
     </div>

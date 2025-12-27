@@ -1,12 +1,10 @@
-
 import { ScoreSystem, PERSISTENCE_KEYS } from "./definitions";
 import { persistence } from "./libs/persistence";
-import { now } from "./utils";
-
 type UIElements = {
   score: HTMLElement;
   speed: HTMLElement;
   streak: HTMLElement;
+  coins: HTMLElement;
   message: HTMLElement;
   highScore: HTMLElement;
   menuOverlay: HTMLElement;
@@ -30,6 +28,7 @@ export async function initUI(): Promise<UIElements> {
     score: qs("score-value"),
     speed: qs("speed-value"),
     streak: qs("streak-value"),
+    coins: qs("coins-value"),
     message: qs("message"),
     highScore: qs("highscore-value"),
     menuOverlay: qs("menu-overlay"),
@@ -60,7 +59,10 @@ export function showMenu() {
 }
 
 export function hideMenu() {
-  if (!ui) return;
+  if (!ui) {
+    console.error("hideMenu: ui e null!");
+    return;
+  }
   ui.menuOverlay.classList.remove("visible");
   ui.menuOverlay.style.display = "none";
 }
@@ -90,17 +92,18 @@ export function updateHUD(
   ui.score.textContent = `${Math.floor(scoreSystem.score)}`;
   ui.speed.textContent = `${Math.round(speed * 3)} km/h`;
   ui.streak.textContent = `x${scoreSystem.combo.toFixed(1)}`;
+  ui.coins.textContent = `${scoreSystem.coins}`;
   ui.highScore.textContent = `${Math.floor(scoreSystem.highScore)}`;
 
   // Subtle turbo cue via message opacity
   if (turboCharge >= 0.99) {
-    ui.message.textContent = "TURBO PRONTO • SPAZIO";
+    ui.message.textContent = "TURBO PRONTO - SPAZIO";
     ui.message.style.opacity = "1";
   } else if (turboCharge > 0.3) {
     ui.message.textContent = "Evita gli ostacoli, carica il turbo";
     ui.message.style.opacity = "0.75";
   } else {
-    ui.message.textContent = "Guida la tua Vespa 5 nella notte di città";
+    ui.message.textContent = "Guida la tua Vespa 5 nella notte di citta";
     ui.message.style.opacity = "0.5";
   }
 }

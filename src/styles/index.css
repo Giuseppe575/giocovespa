@@ -70,6 +70,10 @@ body {
   color: #d9480f;
 }
 
+#coins-value {
+  color: #f08c00;
+}
+
 #highscore-value {
   color: #087f5b;
 }

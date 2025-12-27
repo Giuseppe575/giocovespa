@@ -1,4 +1,3 @@
-
 import * as THREE from "three";
 
 export type GameState = "MENU" | "RUNNING" | "GAME_OVER";
@@ -19,11 +18,14 @@ export type PlayerData = {
   minSpeed: number;
   lateralSpeed: number;
   laneWidth: number;
+  laneX: number;
+  verticalVelocity: number;
+  isJumping: boolean;
   turboCharge: number; // 0 - 1
   turboActive: boolean;
 };
 
-export type ObstacleType = "CAR" | "BARRIER" | "CONE";
+export type ObstacleType = "CAR" | "BARRIER" | "CONE" | "RAMP" | "COIN";
 
 export type Obstacle = {
   mesh: THREE.Group;
@@ -54,6 +56,7 @@ export type ScoreSystem = {
   score: number;
   highScore: number;
   distance: number;
+  coins: number;
   combo: number;
   lastComboTime: number;
 };
@@ -80,11 +83,23 @@ export const GAME_CONFIG = {
   maxSpeed: 52,
   minSpeed: 6,
   lateralSpeed: 18,
+  jumpVelocity: 12.2,
+  gravity: 28,
+  jumpSafeHeight: 0.9,
   turboBoost: 16,
   turboDuration: 0.5,
   turboRechargeRate: 0.12,
   comboTimeout: 2.1,
   obstacleSafeRadius: 2.0,
+  rampSpawnDistanceMin: 65,
+  rampSpawnDistanceMax: 110,
+  rampSpawnChance: 0.6,
+  coinSpawnDistanceMin: 24,
+  coinSpawnDistanceMax: 55,
+  coinValue: 14,
+  curveAmplitude: 2.6,
+  curveFrequency: 0.14,
+  curveSpeed: 0.85,
   cameraBaseOffset: new THREE.Vector3(0, 3.5, 8.2),
   cameraLookAt: new THREE.Vector3(0, 1.5, -6),
   fov: 60,
@@ -95,6 +110,7 @@ export const GAME_CONFIG = {
   hemiColorGround: 0x9cb7c5,
   sunColor: 0xfff2c8,
   cityFogColor: 0xb8ddff,
+  debug: false,
 };
 
 export const PERSISTENCE_KEYS = {

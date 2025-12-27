@@ -1,4 +1,3 @@
-
 import * as THREE from "three";
 import { GAME_CONFIG, Obstacle, ObstacleType, World } from "./definitions";
 import {
@@ -9,7 +8,13 @@ import {
   randRange,
 } from "./utils";
 
+const logDebug = (...args: unknown[]) => {
+  if (GAME_CONFIG.debug) console.log(...args);
+};
+
 export function createRenderer(): THREE.WebGLRenderer {
+  logDebug("createRenderer() - Inizio creazione renderer");
+
   const createCanvasErrorOverlay = (message: string) => {
     const errorDiv = document.createElement('div');
     errorDiv.style.position = 'fixed';
@@ -42,6 +47,7 @@ export function createRenderer(): THREE.WebGLRenderer {
 
   try {
     renderer = new THREE.WebGLRenderer(rendererOptions);
+    logDebug("createRenderer() - WebGLRenderer creato");
   } catch (error) {
     console.warn("createRenderer() - WebGLRenderer fallito, provo WebGL1 con canvas manuale", error);
     try {
@@ -60,6 +66,7 @@ export function createRenderer(): THREE.WebGLRenderer {
         canvas: fallbackCanvas,
         context: fallbackContext as WebGLRenderingContext,
       });
+      logDebug("createRenderer() - Renderer creato con contesto WebGL1 fallback");
     } catch (fallbackError) {
       console.error("ERRORE nella creazione del renderer WebGL:", fallbackError);
       createCanvasErrorOverlay("Il tuo dispositivo non riesce a creare un contesto WebGL.");
@@ -85,7 +92,7 @@ export function createRenderer(): THREE.WebGLRenderer {
       event.preventDefault();
       console.error("WebGL context lost - mostro messaggio all'utente");
       createCanvasErrorOverlay(
-        "Il rendering 3D è stato disattivato dal browser (contesto WebGL perso). Chiudi altre app o ricarica la pagina."
+        "Il rendering 3D e stato disattivato dal browser (contesto WebGL perso). Chiudi altre app o ricarica la pagina."
       );
     },
     { passive: false }
@@ -105,9 +112,13 @@ export function createRenderer(): THREE.WebGLRenderer {
   const hud = document.getElementById('hud');
   if (hud && hud.parentNode) {
     hud.parentNode.insertBefore(canvas, hud);
+    logDebug("Renderer canvas inserito prima dell'HUD");
   } else {
     document.body.insertBefore(canvas, document.body.firstChild);
+    logDebug("Renderer canvas inserito come primo elemento del body");
   }
+
+  logDebug(`Canvas dimensioni: ${canvas.width}x${canvas.height}, style: ${canvas.style.width}x${canvas.style.height}`);
   return renderer;
 }
 
@@ -337,6 +348,7 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
     );
     const mesh = new THREE.Mesh(geom, material);
     mesh.position.set(0, 0, z);
+    mesh.userData.baseX = 0;
     mesh.receiveShadow = true;
     scene.add(mesh);
     segments.push(mesh);
@@ -358,6 +370,7 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
       const geom = new THREE.BoxGeometry(0.08, 0.02, dashLength);
       const mesh = new THREE.Mesh(geom, lineMat);
       mesh.position.set(x, 0.07, -i * (dashLength + dashGap));
+      mesh.userData.baseX = x;
       mesh.receiveShadow = false;
       mesh.castShadow = false;
       scene.add(mesh);
@@ -377,9 +390,12 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
     const right = new THREE.Mesh(geom, sideMat);
     left.position.set(-width / 2 - 1, 0.15, -i * 5);
     right.position.set(width / 2 + 1, 0.15, -i * 5);
+    left.userData.baseX = left.position.x;
+    right.userData.baseX = right.position.x;
     left.receiveShadow = true;
     right.receiveShadow = true;
     scene.add(left, right);
+    segments.push(left, right);
   }
 
   return segments;
@@ -470,7 +486,7 @@ function createBuildingForSide(side: number, worldWidth: number): THREE.Group {
   });
   addFacadeWindows(group, w, h, d, side, windowMat);
 
-  // Bordo cornice superiore per dare più "massa"
+  // Bordo cornice superiore per dare piu "massa"
   const crown = new THREE.Mesh(
     new THREE.BoxGeometry(w + 0.2, 0.25, d + 0.2),
     new THREE.MeshStandardMaterial({
@@ -497,6 +513,7 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
         0,
         -i * 5 - randRange(0, 5)
       );
+      b.userData.baseX = b.position.x;
 
       b.traverse((obj) => {
         if ((obj as THREE.Mesh).isMesh) {
@@ -557,6 +574,7 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
 
       const lightX = side * (worldWidth / 2 + 1.2);
       pole.position.set(lightX, 0, z);
+      pole.userData.baseX = pole.position.x;
 
       const l = new THREE.PointLight(0xfff2d1, 0.2, 18, 1.4);
       l.position.set(
@@ -663,6 +681,80 @@ function createCone(): THREE.Group {
   return group;
 }
 
+function createRamp(): THREE.Group {
+  const group = new THREE.Group();
+  const mat = createSoftBody(0x8c939d);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 2.5), mat);
+  base.position.y = 0.09;
+  base.castShadow = true;
+  base.receiveShadow = true;
+
+  const slope = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.32, 1.9), mat);
+  slope.position.set(0, 0.32, -0.25);
+  slope.rotation.x = -Math.PI / 10;
+  slope.castShadow = true;
+
+  group.add(base, slope);
+  return group;
+}
+
+function createCoin(): THREE.Group {
+  const group = new THREE.Group();
+  const coin = new THREE.Mesh(
+    new THREE.TorusGeometry(0.26, 0.09, 12, 20),
+    createEmissiveMaterial(0xffd85a, 1.1)
+  );
+  coin.rotation.x = Math.PI / 2;
+  coin.castShadow = false;
+  group.add(coin);
+  return group;
+}
+
+function pickLaneIndex(
+  world: World,
+  zSpawn: number,
+  checkDistance: number,
+  avoidLanes: Set<number> = new Set()
+): number {
+  const laneOccupancy = new Map<number, number>();
+  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    laneOccupancy.set(i, 0);
+  }
+
+  for (const obstacle of world.obstacles) {
+    if (obstacle.type === "COIN") continue;
+    const obstacleZ = obstacle.mesh.position.z;
+    if (obstacleZ < zSpawn && obstacleZ > zSpawn - checkDistance) {
+      const lane = obstacle.laneIndex;
+      laneOccupancy.set(lane, (laneOccupancy.get(lane) || 0) + 1);
+    }
+  }
+
+  const freeLanes: number[] = [];
+  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (laneOccupancy.get(i) === 0 && !avoidLanes.has(i)) {
+      freeLanes.push(i);
+    }
+  }
+
+  if (freeLanes.length > 0) {
+    return freeLanes[Math.floor(Math.random() * freeLanes.length)];
+  }
+
+  let minOccupancy = Infinity;
+  let laneIndex = 0;
+  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (avoidLanes.has(i)) continue;
+    const occupancy = laneOccupancy.get(i) || 0;
+    if (occupancy < minOccupancy) {
+      minOccupancy = occupancy;
+      laneIndex = i;
+    }
+  }
+
+  return laneIndex;
+}
+
 export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: number[] = []): Obstacle {
   const type: ObstacleType = choice(["CAR", "BARRIER", "CONE"]);
   let mesh: THREE.Group;
@@ -683,49 +775,13 @@ export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: nu
     collisionRadius = 0.8; // Cones are SMALL - much smaller collision
   }
 
-  // Find which lanes are COMPLETELY FREE in a large area ahead
-  const checkDistance = 35; // Large area to check
-  const laneOccupancy = new Map<number, number>(); // lane -> number of obstacles
-
-  // Initialize all lanes as free
-  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
-    laneOccupancy.set(i, 0);
-  }
-
-  // Check all existing obstacles
-  for (const obstacle of world.obstacles) {
-    const obstacleZ = obstacle.mesh.position.z;
-    // Only check obstacles that are ahead of spawn position
-    if (obstacleZ < zSpawn && obstacleZ > zSpawn - checkDistance) {
-      const lane = obstacle.laneIndex;
-      laneOccupancy.set(lane, (laneOccupancy.get(lane) || 0) + 1);
-    }
-  }
-
-  // Get completely free lanes (zero obstacles)
-  const freeLanes: number[] = [];
-  for (let i = 0; i < GAME_CONFIG.lanes; i++) {
-    if (laneOccupancy.get(i) === 0) {
-      freeLanes.push(i);
-    }
-  }
-
-  let laneIndex: number;
-  if (freeLanes.length > 0) {
-    // Pick a random free lane
-    laneIndex = freeLanes[Math.floor(Math.random() * freeLanes.length)];
-  } else {
-    // If no completely free lanes, pick the least occupied
-    let minOccupancy = Infinity;
-    laneIndex = 0;
-    for (let i = 0; i < GAME_CONFIG.lanes; i++) {
-      const occupancy = laneOccupancy.get(i) || 0;
-      if (occupancy < minOccupancy) {
-        minOccupancy = occupancy;
-        laneIndex = i;
-      }
-    }
-  }
+  const checkDistance = 35;
+  const laneIndex = pickLaneIndex(
+    world,
+    zSpawn,
+    checkDistance,
+    new Set(lastSpawnedLanes)
+  );
 
   const laneOffset =
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
@@ -747,6 +803,78 @@ export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: nu
     laneIndex,
     length,
     collisionRadius,
+    passed: false,
+    awarded: false,
+  };
+
+  world.obstacles.push(obstacle);
+  return obstacle;
+}
+
+export function spawnRamp(world: World, zSpawn: number, lastSpawnedLanes: number[] = []): Obstacle {
+  const mesh = createRamp();
+  const checkDistance = 30;
+  const laneIndex = pickLaneIndex(
+    world,
+    zSpawn,
+    checkDistance,
+    new Set(lastSpawnedLanes)
+  );
+
+  const laneOffset =
+    (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
+
+  mesh.position.set(laneOffset, 0, zSpawn);
+  mesh.traverse((obj) => {
+    if ((obj as THREE.Mesh).isMesh) {
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+    }
+  });
+
+  world.scene.add(mesh);
+
+  const obstacle: Obstacle = {
+    mesh,
+    type: "RAMP",
+    laneOffset,
+    laneIndex,
+    length: 2.5,
+    collisionRadius: 1.5,
+    passed: false,
+    awarded: false,
+  };
+
+  world.obstacles.push(obstacle);
+  return obstacle;
+}
+
+export function spawnCoin(world: World, zSpawn: number, laneIndex?: number): Obstacle {
+  const mesh = createCoin();
+  const lane = typeof laneIndex === "number"
+    ? laneIndex
+    : pickLaneIndex(world, zSpawn, 20);
+
+  const laneOffset =
+    (lane - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
+
+  mesh.position.set(laneOffset, 0.6, zSpawn);
+  mesh.traverse((obj) => {
+    if ((obj as THREE.Mesh).isMesh) {
+      obj.castShadow = false;
+      obj.receiveShadow = false;
+    }
+  });
+
+  world.scene.add(mesh);
+
+  const obstacle: Obstacle = {
+    mesh,
+    type: "COIN",
+    laneOffset,
+    laneIndex: lane,
+    length: 0.2,
+    collisionRadius: 0.6,
     passed: false,
     awarded: false,
   };
