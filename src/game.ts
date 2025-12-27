@@ -95,11 +95,12 @@ function getCurveOffset(): number {
   const straightLen = GAME_CONFIG.curveStraightLength;
   const curveLen = GAME_CONFIG.curveLength;
   const cycleLen = straightLen + curveLen + straightLen;
-  const local = curveDistance % cycleLen;
+  const progress = curveDistance * GAME_CONFIG.curveSpeed;
+  const local = progress % cycleLen;
   if (local < straightLen) return 0;
   if (local >= straightLen + curveLen) return 0;
   const curveT = (local - straightLen) / curveLen;
-  const direction = Math.floor(curveDistance / cycleLen) % 2 === 0 ? 1 : -1;
+  const direction = Math.floor(progress / cycleLen) % 2 === 0 ? 1 : -1;
   return Math.sin(curveT * Math.PI) * GAME_CONFIG.curveAmplitude * direction;
 }
 
@@ -763,7 +764,7 @@ function updateObstacles(dt: number) {
     }
   });
 
-  curveDistance += dz * GAME_CONFIG.curveSpeed;
+  curveDistance += dz;
   world.roadSegments.forEach((seg) => applyCurveToObject(seg, 1));
   world.buildings.forEach((b) => applyCurveToObject(b, 0.7));
   world.streetLights.forEach((l) => applyCurveToObject(l, 0.9));
