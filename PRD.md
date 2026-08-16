@@ -173,6 +173,10 @@ Fonti ufficiali e link sono raccolti in `RESEARCH.md`.
 - missione dei 750 m, near-miss, miglior combo e turbo mobile;
 - dominio testabile con `GameStateMachine` e `RunModel`;
 - refresh mediterraneo low-poly di scooter, strada, edifici e hazard;
+- monete premium stratificate con bordo metallico e marchio in rilievo;
+- primo distretto lungomare con spiaggia, battigia, mare e palme;
+- difficulty director progressivo sui primi 900 m, con apertura più tranquilla;
+- scheduler anti-burst con almeno una corsia libera e monete su traiettorie leggibili;
 - ottimizzazione di finestre, segnaletica stradale e illuminazione;
 - fondazioni Figma: 30 token, quattro stili tipografici, effetto card, Cover, Getting Started e pagina Foundations;
 - verifiche automatiche: test unitari, typecheck e build di produzione.
@@ -188,6 +192,7 @@ Queste attività sono sospese esclusivamente perché è stato raggiunto il limit
 ### Prossima slice
 
 - strada realmente spline-based con curve visibili;
-- `SpawnDirector` basato su pattern percorribili e difficoltà progressiva;
+- circuiti cittadini distinti: centro storico, lungomare, mercato e collina;
+- `SpawnDirector` evoluto con pattern concatenati e solver di percorribilità;
 - feedback audio, particelle e onboarding contestuale;
 - playtest mobile e desktop sui KPI definiti in questo PRD.

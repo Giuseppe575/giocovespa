@@ -27,11 +27,74 @@ const PALETTE = {
   shutters: 0x315e5d,
   hazardRed: 0xe63b32,
   hazardAmber: 0xffb000,
+  sea: 0x238ea8,
+  seaDeep: 0x176b8c,
+  beach: 0xe8c98f,
+  palmLeaf: 0x397a55,
 } as const;
 
 const sharedGeometry = {
   laneDash: new THREE.BoxGeometry(0.09, 0.025, 1.35),
   window: new THREE.BoxGeometry(0.3, 0.42, 0.045),
+  coinRim: new THREE.TorusGeometry(0.27, 0.055, 10, 28),
+  coinFace: new THREE.CylinderGeometry(0.225, 0.225, 0.055, 28),
+  coinInset: new THREE.CylinderGeometry(0.155, 0.155, 0.062, 24),
+  coinMark: new THREE.BoxGeometry(0.055, 0.22, 0.035),
+  palmTrunk: new THREE.CylinderGeometry(0.09, 0.14, 2.5, 7),
+  palmLeaf: new THREE.ConeGeometry(0.32, 1.55, 5),
+  beachBlock: new THREE.BoxGeometry(8.5, 0.12, 6.2),
+  seaBlock: new THREE.BoxGeometry(34, 0.09, 6.2),
+  foamBlock: new THREE.BoxGeometry(0.38, 0.035, 5.828),
+};
+
+const coinMaterials = {
+  rim: new THREE.MeshStandardMaterial({
+    color: 0xffd35a,
+    emissive: 0x9b5200,
+    emissiveIntensity: 0.65,
+    metalness: 0.82,
+    roughness: 0.2,
+  }),
+  face: new THREE.MeshStandardMaterial({
+    color: 0xf6a91b,
+    emissive: 0x7a3500,
+    emissiveIntensity: 0.35,
+    metalness: 0.72,
+    roughness: 0.27,
+  }),
+  inset: new THREE.MeshStandardMaterial({
+    color: 0xffe28a,
+    emissive: 0xb25d00,
+    emissiveIntensity: 0.5,
+    metalness: 0.68,
+    roughness: 0.22,
+  }),
+  mark: new THREE.MeshStandardMaterial({
+    color: 0xfff3bd,
+    emissive: 0xffa51f,
+    emissiveIntensity: 0.8,
+    metalness: 0.5,
+    roughness: 0.25,
+  }),
+};
+
+const coastMaterials = {
+  sand: new THREE.MeshStandardMaterial({ color: PALETTE.beach, roughness: 1 }),
+  sea: new THREE.MeshStandardMaterial({
+    color: PALETTE.sea,
+    emissive: PALETTE.seaDeep,
+    emissiveIntensity: 0.13,
+    roughness: 0.3,
+    metalness: 0.08,
+  }),
+  foam: new THREE.MeshStandardMaterial({
+    color: 0xe9fbf5,
+    emissive: 0xa8e3df,
+    emissiveIntensity: 0.25,
+    roughness: 0.75,
+  }),
+  trunk: new THREE.MeshStandardMaterial({ color: 0x9a6842, roughness: 1 }),
+  leaf: new THREE.MeshStandardMaterial({ color: PALETTE.palmLeaf, roughness: 0.92 }),
 };
 
 export function createRenderer(): THREE.WebGLRenderer {
@@ -552,16 +615,73 @@ function createBuildingForSide(side: number, _worldWidth: number): THREE.Group {
   return group;
 }
 
+/** A lightweight, recyclable slice of the seaside district. */
+function createCoastalBlock(side: number, blockIndex: number): THREE.Group {
+  const group = new THREE.Group();
+
+  const beach = new THREE.Mesh(
+    sharedGeometry.beachBlock,
+    coastMaterials.sand
+  );
+  beach.position.set(side * 1.15, 0.01, 0);
+  beach.receiveShadow = true;
+
+  const sea = new THREE.Mesh(
+    sharedGeometry.seaBlock,
+    coastMaterials.sea
+  );
+  sea.position.set(side * 22.35, -0.035, 0);
+  sea.receiveShadow = false;
+
+  // A narrow bright band makes the shoreline readable even through the fog.
+  const foam = new THREE.Mesh(
+    sharedGeometry.foamBlock,
+    coastMaterials.foam
+  );
+  foam.position.set(side * 5.35, 0.095, 0);
+
+  group.add(beach, sea, foam);
+
+  // Alternate palms between blocks to keep the district lively but inexpensive.
+  if (blockIndex % 2 === 0) {
+    const palm = new THREE.Group();
+    const trunk = new THREE.Mesh(sharedGeometry.palmTrunk, coastMaterials.trunk);
+    trunk.position.y = 1.25;
+    trunk.rotation.z = side * randRange(-0.07, 0.07);
+    trunk.castShadow = true;
+    palm.add(trunk);
+
+    for (let leafIndex = 0; leafIndex < 5; leafIndex++) {
+      const leaf = new THREE.Mesh(sharedGeometry.palmLeaf, coastMaterials.leaf);
+      leaf.position.y = 2.55;
+      leaf.rotation.z = Math.PI / 2.8;
+      leaf.rotation.y = (leafIndex / 5) * Math.PI * 2;
+      leaf.castShadow = true;
+      palm.add(leaf);
+    }
+
+    palm.position.set(side * 0.5, 0.1, randRange(-1.4, 1.4));
+    palm.rotation.y = randRange(-0.35, 0.35);
+    group.add(palm);
+  }
+
+  return group;
+}
+
 export function createBuildings(scene: THREE.Scene, worldWidth: number) {
   const buildings: THREE.Group[] = [];
 
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 40; i++) {
-      const b = createBuildingForSide(side, worldWidth);
+      // A long uninterrupted stretch on the right opens onto the sea.
+      const isCoastalDistrict = side === 1 && i >= 11 && i <= 27;
+      const b = isCoastalDistrict
+        ? createCoastalBlock(side, i)
+        : createBuildingForSide(side, worldWidth);
       b.position.set(
-        side * (worldWidth / 2 + 3 + randRange(0, 2)),
+        side * (worldWidth / 2 + 3 + (isCoastalDistrict ? 0 : randRange(0, 2))),
         0,
-        -i * 5 - randRange(0, 5)
+        -i * 5 - (isCoastalDistrict ? 0 : randRange(0, 5))
       );
       b.userData.baseX = b.position.x;
 
@@ -761,13 +881,23 @@ function createRamp(): THREE.Group {
 
 function createCoin(): THREE.Group {
   const group = new THREE.Group();
-  const coin = new THREE.Mesh(
-    new THREE.TorusGeometry(0.26, 0.09, 12, 20),
-    createEmissiveMaterial(0xffcf40, 1.7)
-  );
-  coin.rotation.x = Math.PI / 2;
-  coin.castShadow = false;
-  group.add(coin);
+
+  const rim = new THREE.Mesh(sharedGeometry.coinRim, coinMaterials.rim);
+  const face = new THREE.Mesh(sharedGeometry.coinFace, coinMaterials.face);
+  const inset = new THREE.Mesh(sharedGeometry.coinInset, coinMaterials.inset);
+  face.rotation.x = Math.PI / 2;
+  inset.rotation.x = Math.PI / 2;
+  inset.position.z = 0.035;
+
+  // A simple raised Vespa-style "V" remains clear at gameplay scale.
+  const markLeft = new THREE.Mesh(sharedGeometry.coinMark, coinMaterials.mark);
+  markLeft.position.set(-0.052, 0.01, 0.075);
+  markLeft.rotation.z = -0.43;
+  const markRight = markLeft.clone();
+  markRight.position.x = 0.052;
+  markRight.rotation.z = 0.43;
+
+  group.add(face, rim, inset, markLeft, markRight);
   return group;
 }
 
