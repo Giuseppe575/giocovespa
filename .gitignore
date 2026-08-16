@@ -1,6 +1,5 @@
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Build outputs
@@ -22,3 +21,10 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Local browser QA artifacts
+.playwright-cli/
+output/playwright/
+
+# Local Figma generation ledger
+.figma-design-state.json

@@ -41,13 +41,19 @@ import {
   updateHUD,
 } from "./ui";
 import { persistence } from "./libs/persistence";
+import { createRunModel, GameStateMachine } from "./core";
+import type { RunSnapshot } from "./core";
 
 const logDebug = (...args: unknown[]) => {
   if (GAME_CONFIG.debug) console.log(...args);
 };
 
 let world: World;
-let gameState: GameState = "MENU";
+const gameStateMachine = new GameStateMachine();
+let gameState: GameState = gameStateMachine.state;
+gameStateMachine.subscribe(({ to }) => {
+  gameState = to;
+});
 let input: InputState = {
   left: false,
   right: false,
@@ -60,9 +66,23 @@ let scoreSystem: ScoreSystem = {
   highScore: 0,
   distance: 0,
   coins: 0,
+  nearMisses: 0,
   combo: 1,
+  bestCombo: 1,
+  missionCompleted: false,
   lastComboTime: 0,
 };
+const runModel = createRunModel(
+  { id: "lungomare-750", targetDistance: 750 },
+  {
+    distanceScoreFactor: 0.7,
+    coinValue: GAME_CONFIG.coinValue,
+    nearMissValue: 75,
+    comboStep: 0.15,
+    maxCombo: 6,
+    comboWindowSeconds: GAME_CONFIG.comboTimeout,
+  }
+);
 let audio: AudioSystem = {
   context: null,
   muted: false,
@@ -87,6 +107,7 @@ let hudUpdateTimer = 0;
 const HUD_UPDATE_INTERVAL = 1 / 20;
 let curveDistance = 0;
 let audioInitPromise: Promise<void> | null = null;
+let documentPaused = document.hidden;
 const cameraBaseOffset = new THREE.Vector3();
 const cameraTargetPos = new THREE.Vector3();
 const cameraLookAt = new THREE.Vector3();
@@ -112,6 +133,17 @@ function applyCurveToObject(obj: THREE.Object3D, factor = 1) {
 
 function isHazard(type: string) {
   return type === "CAR" || type === "BARRIER" || type === "CONE";
+}
+
+function syncRunSnapshot(snapshot: RunSnapshot) {
+  scoreSystem.score = snapshot.score;
+  scoreSystem.distance = snapshot.distance;
+  scoreSystem.coins = snapshot.coins;
+  scoreSystem.nearMisses = snapshot.nearMisses;
+  scoreSystem.combo = snapshot.combo;
+  scoreSystem.bestCombo = snapshot.maxCombo;
+  scoreSystem.missionCompleted = snapshot.mission?.completed ?? false;
+  scoreSystem.lastComboTime = now();
 }
 
 async function initAudio() {
@@ -352,10 +384,12 @@ export async function initGame() {
   // Setup button handlers (solo mute - play/restart gestiti in main.ts)
   const ui = getUI();
   if (ui) {
-    ui.muteBtn.textContent = audio.muted ? "??" : "??";
+    ui.muteBtn.setAttribute("aria-pressed", audio.muted ? "true" : "false");
+    ui.muteBtn.setAttribute("aria-label", audio.muted ? "Attiva audio" : "Disattiva audio");
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
-      ui.muteBtn.textContent = audio.muted ? "??" : "??";
+      ui.muteBtn.setAttribute("aria-pressed", audio.muted ? "true" : "false");
+      ui.muteBtn.setAttribute("aria-label", audio.muted ? "Attiva audio" : "Disattiva audio");
       if (!audio.muted && !audio.context) {
         await ensureAudioReady();
       }
@@ -380,6 +414,13 @@ export async function initGame() {
   showMenu();
 
   window.addEventListener("resize", onResize);
+  document.addEventListener("visibilitychange", () => {
+    documentPaused = document.hidden;
+    lastTime = now();
+    if (!documentPaused && gameState === "RUNNING") {
+      flashMessage("Bentornato — riprendi la corsa", 1.1);
+    }
+  });
   onResize();
   logDebug("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
   if (pendingStart) {
@@ -472,8 +513,12 @@ function resetGameState() {
   scoreSystem.score = 0;
   scoreSystem.distance = 0;
   scoreSystem.coins = 0;
+  scoreSystem.nearMisses = 0;
   scoreSystem.combo = 1;
+  scoreSystem.bestCombo = 1;
+  scoreSystem.missionCompleted = false;
   scoreSystem.lastComboTime = now();
+  syncRunSnapshot(runModel.reset());
 
   // Reset stato gioco
   turboTimeLeft = 0;
@@ -528,7 +573,7 @@ async function startRun() {
   hideGameOver();
 
   // Avvia il gioco immediatamente
-  gameState = "RUNNING";
+  gameStateMachine.dispatch(gameState === "GAME_OVER" ? "RESTART" : "START");
   lastTime = now();
   flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
@@ -557,7 +602,7 @@ export function manualStartGame() {
     resetGameState();
     hideMenu();
     hideGameOver();
-    gameState = "RUNNING";
+    gameStateMachine.dispatch(gameState === "GAME_OVER" ? "RESTART" : "START");
     lastTime = now();
     flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
@@ -635,6 +680,10 @@ function animate() {
   const t = now();
   const dt = Math.min(0.05, t - lastTime);
   lastTime = t;
+  if (documentPaused) {
+    world.renderer.render(world.scene, world.camera);
+    return;
+  }
   if (startGraceTime > 0 && gameState === "RUNNING") {
     startGraceTime = Math.max(0, startGraceTime - dt);
   }
@@ -858,32 +907,36 @@ function updateObstacles(dt: number) {
     if (!o.passed && o.mesh.position.z > p.mesh.position.z) {
       o.passed = true;
       if (isHazard(o.type)) {
-        scoreSystem.distance += 1;
-        scoreSystem.combo = clamp(scoreSystem.combo + 0.1, 1, 5);
-        scoreSystem.lastComboTime = now();
-        const ui = getUI();
-        if (ui) animateHUDPop(ui.streak, 0.16, 1.15);
+        const lateralGap = Math.abs(p.mesh.position.x - o.mesh.position.x);
+        const nearMissLimit = o.collisionRadius + 1.15;
+        if (
+          !p.isJumping &&
+          lateralGap > o.collisionRadius &&
+          lateralGap <= nearMissLimit
+        ) {
+          syncRunSnapshot(runModel.registerNearMiss());
+          p.turboCharge = clamp(p.turboCharge + 0.12, 0, 1);
+          flashMessage("BELLA FIGURA · NEAR-MISS +75", 0.9);
+          const ui = getUI();
+          if (ui) animateHUDPop(ui.streak, 0.18, 1.22);
+        }
       }
     }
   }
 }
 
 function updateScore(dt: number) {
-  scoreSystem.distance += world.player.speed * dt * 0.02;
-  scoreSystem.score +=
-    (world.player.speed * 0.35 + scoreSystem.combo * 4) * dt;
-
-  // Combo decay over time if nothing new happens
-  if (now() - scoreSystem.lastComboTime > GAME_CONFIG.comboTimeout) {
-    scoreSystem.combo = lerp(scoreSystem.combo, 1, 0.6 * dt);
+  const wasComplete = scoreSystem.missionCompleted;
+  let snapshot = runModel.advance(dt, world.player.speed * 0.45);
+  if (!wasComplete && snapshot.mission?.completed) {
+    snapshot = runModel.awardBonus(500);
+    flashMessage("MISSIONE COMPLETATA · +500", 1.8);
   }
+  syncRunSnapshot(snapshot);
 }
 
 function awardCoin() {
-  scoreSystem.coins += 1;
-  scoreSystem.score += GAME_CONFIG.coinValue;
-  scoreSystem.combo = clamp(scoreSystem.combo + 0.15, 1, 6);
-  scoreSystem.lastComboTime = now();
+  syncRunSnapshot(runModel.collectCoin());
   const ui = getUI();
   if (ui) animateHUDPop(ui.score, 0.12, 1.1);
 }
@@ -952,7 +1005,7 @@ function checkCollisions() {
 
 async function triggerGameOver() {
   if (gameState !== "RUNNING") return;
-  gameState = "GAME_OVER";
+  gameStateMachine.dispatch("CRASH");
   gameOverCooldown = 0.5;
   cameraShakeIntensity = 1.2;
 

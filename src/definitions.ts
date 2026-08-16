@@ -46,7 +46,7 @@ export type World = {
   player: PlayerData;
   obstacles: Obstacle[];
   roadSegments: THREE.Mesh[];
-  buildings: THREE.Mesh[];
+  buildings: THREE.Group[];
   streetLights: THREE.Group[];
   vehiclesPool: THREE.Group[];
   cityFogColor: THREE.Color;
@@ -57,7 +57,10 @@ export type ScoreSystem = {
   highScore: number;
   distance: number;
   coins: number;
+  nearMisses: number;
   combo: number;
+  bestCombo: number;
+  missionCompleted: boolean;
   lastComboTime: number;
 };
 

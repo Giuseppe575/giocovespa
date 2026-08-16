@@ -2,70 +2,130 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vespa City Ride 3D</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23ffb647'/%3E%3Ctext x='50' y='65' font-size='60' text-anchor='middle' fill='%230f1c2c' font-family='Arial'%3EV%3C/text%3E%3C/svg%3E" />
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background: #000;
-      }
-    </style>
-    <script type="module" crossorigin src="./assets/index-B5uLrJLu.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DI2pgvTZ.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#79c8e8" />
+    <title>Vespa City Ride — Cartolina italiana in corsa</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23F6C453'/%3E%3Cpath d='M24 58h52l-8 14H34z' fill='%2312233F'/%3E%3Ccircle cx='36' cy='74' r='9' fill='%2312233F'/%3E%3Ccircle cx='67' cy='74' r='9' fill='%2312233F'/%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="./assets/index-DVWuAEWH.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DkEIdp8y.css">
   </head>
   <body>
-    <div id="hud">
-      <div class="hud-left">
-        <div id="score-label" class="hud-label">PUNTI</div>
-        <div id="score-value" class="hud-value">0</div>
-        <div id="speed-label" class="hud-label">VELOCITA</div>
-        <div id="speed-value" class="hud-value">0 km/h</div>
-        <div id="streak-label" class="hud-label">SERIE</div>
-        <div id="streak-value" class="hud-value">x0</div>
-        <div id="coins-label" class="hud-label">MONETE</div>
-        <div id="coins-value" class="hud-value">0</div>
+    <a class="skip-link" href="#play-btn">Vai al pulsante di gioco</a>
+
+    <div id="hud" aria-label="Informazioni della corsa">
+      <div class="hud-topbar">
+        <div class="hud-cluster hud-primary-stats">
+          <div class="hud-stat hud-score">
+            <span id="score-label" class="hud-label">Punti</span>
+            <span id="score-value" class="hud-value">0</span>
+          </div>
+          <div class="hud-stat hud-combo">
+            <span id="streak-label" class="hud-label">Bella figura</span>
+            <span id="streak-value" class="hud-value">x1.0</span>
+          </div>
+          <div class="hud-stat hud-coins">
+            <span class="stat-icon coin-icon" aria-hidden="true"></span>
+            <span id="coins-label" class="visually-hidden">Monete</span>
+            <span id="coins-value" class="hud-value">0</span>
+          </div>
+        </div>
+
+        <div class="hud-mission" aria-label="Missione della corsa">
+          <span class="hud-label">Missione</span>
+          <span id="mission-value" class="mission-copy">Raggiungi 750 m</span>
+          <div id="mission-progress" class="progress-track progress-track-small" role="progressbar" aria-label="Progresso missione" aria-valuemin="0" aria-valuemax="750" aria-valuenow="0">
+            <span class="progress-fill"></span>
+          </div>
+        </div>
+
+        <div class="hud-cluster hud-record-audio">
+          <div class="hud-stat hud-record">
+            <span id="highscore-label" class="hud-label">Record</span>
+            <span id="highscore-value" class="hud-value">0</span>
+          </div>
+          <button id="mute-btn" class="icon-button audio-button" type="button" aria-label="Disattiva audio" aria-pressed="false"><span class="visually-hidden">Audio</span></button>
+        </div>
       </div>
+
       <div class="hud-center">
-        <div id="message" class="hud-message"></div>
+        <div id="message" class="hud-message" role="status" aria-live="polite" aria-atomic="true"></div>
       </div>
-      <div class="hud-right">
-        <div id="highscore-label" class="hud-label">RECORD</div>
-        <div id="highscore-value" class="hud-value">0</div>
-        <button id="mute-btn" class="hud-button">??</button>
+
+      <div class="hud-bottombar">
+        <div class="speed-card">
+          <span id="speed-label" class="hud-label">Velocità</span>
+          <span id="speed-value" class="hud-value">0 km/h</span>
+        </div>
+        <div class="turbo-card">
+          <div class="turbo-heading">
+            <span class="hud-label">Turbo</span>
+            <span id="turbo-value">0%</span>
+          </div>
+          <div id="turbo-progress" class="progress-track turbo-track" role="progressbar" aria-label="Carica turbo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span class="progress-fill"></span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div id="mobile-controls">
-      <button id="mobile-accelerate" class="hud-button control">ACCELERA</button>
-      <button id="mobile-brake" class="hud-button control">FRENO</button>
-    </div>
-
-    <div id="menu-overlay" class="overlay visible">
-      <div class="panel">
-        <h1>Vespa City Ride 3D</h1>
-        <p>Guida la tua Vespa 5 attraverso la citta, evita auto e ostacoli e colleziona punti.</p>
-        <ul class="hint-list">
-          <li>Freccia sinistra/destra o A D: sterza</li>
-          <li>W / Freccia su: accelera</li>
-          <li>S / Freccia giu: rallenta</li>
-          <li>Spazio: turbo istantaneo (se carico)</li>
-          <li>Mobile: trascina per sterzare, tieni premuto ACCELERA / FRENO</li>
-        </ul>
-        <p class="note">Sopravvivi il piu a lungo possibile senza collisioni per aumentare il moltiplicatore.</p>
-        <button id="play-btn">GIOCA</button>
+    <div id="mobile-controls" aria-label="Controlli di guida">
+      <div class="steer-hint" aria-hidden="true"><span class="steer-arrows">↔</span><span>Trascina per sterzare</span></div>
+      <div class="pedal-controls">
+        <button id="mobile-brake" class="control control-secondary" type="button">Freno</button>
+        <button id="mobile-accelerate" class="control control-primary" type="button">Accelera</button>
+        <button id="mobile-turbo" class="control control-turbo" type="button" aria-label="Attiva turbo quando carico"><span aria-hidden="true">⚡</span> Turbo</button>
       </div>
     </div>
 
-    <div id="game-over-overlay" class="overlay">
-      <div class="panel">
-        <h2>Collisione!</h2>
-        <p id="final-score">Punteggio: 0</p>
-        <p id="best-score">Record: 0</p>
-        <button id="restart-btn">RIPROVA</button>
+    <div id="menu-overlay" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="menu-title" aria-describedby="menu-description" aria-hidden="false">
+      <div class="panel menu-panel">
+        <div class="panel-accent" aria-hidden="true"></div>
+        <p class="eyebrow">Cartolina italiana in corsa</p>
+        <h1 id="menu-title"><span>Vespa</span> City Ride</h1>
+        <p id="menu-description" class="panel-lead">Sfreccia tra vicoli e lungomare. Guida con stile, raccogli monete e fai bella figura.</p>
+
+        <div class="menu-cards">
+          <div class="mission-card">
+            <span class="card-kicker">Missione di oggi</span>
+            <strong>Raggiungi 750 m</strong>
+            <span>La corsa continua anche dopo il traguardo.</span>
+          </div>
+          <div class="record-card">
+            <span class="card-kicker">Il tuo record</span>
+            <strong id="menu-highscore-value">0</strong>
+            <span>punti</span>
+          </div>
+        </div>
+
+        <div class="controls-summary" aria-label="Comandi">
+          <span><kbd>A</kbd><kbd>D</kbd> Sterza</span>
+          <span><kbd>W</kbd><kbd>S</kbd> Ritmo</span>
+          <span><kbd>Spazio</kbd> Turbo</span>
+        </div>
+
+        <button id="play-btn" class="primary-cta" type="button"><span>Parti</span><span aria-hidden="true">→</span></button>
+        <p class="note">Su mobile usa il dispositivo in orizzontale per una guida migliore.</p>
       </div>
     </div>
-
+
+    <div id="game-over-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="game-over-title" aria-describedby="final-score" aria-hidden="true">
+      <div class="panel recap-panel">
+        <p class="eyebrow">Fine del giro</p>
+        <h2 id="game-over-title">Che corsa!</h2>
+        <p id="final-score" class="final-score">Punteggio <strong>0</strong></p>
+        <p id="best-score" class="best-score">Record: 0</p>
+
+        <div class="recap-grid" aria-label="Risultati della corsa">
+          <div class="recap-stat"><span>Distanza</span><strong id="recap-distance">0 m</strong></div>
+          <div class="recap-stat"><span>Monete</span><strong id="recap-coins">0</strong></div>
+          <div class="recap-stat"><span>Near-miss</span><strong id="recap-near-misses">0</strong></div>
+          <div class="recap-stat"><span>Combo migliore</span><strong id="recap-best-combo">x1.0</strong></div>
+        </div>
+
+        <p id="recap-mission" class="mission-result">Ancora un po’: il traguardo è a 750 m.</p>
+        <button id="restart-btn" class="primary-cta" type="button"><span>Ancora un giro</span><span aria-hidden="true">↻</span></button>
+      </div>
+    </div>
+
   </body>
 </html>
