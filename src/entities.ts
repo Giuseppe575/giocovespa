@@ -783,13 +783,22 @@ function createCar(): THREE.Group {
     [-0.5, 0.22, 0.8],
     [0.5, 0.22, 0.8],
   ];
+  const wheels: THREE.Mesh[] = [];
   wheelPositions.forEach(([x, y, z]) => {
     const w = new THREE.Mesh(wheelGeom, wheelMat);
     w.rotation.z = Math.PI / 2;
     w.position.set(x, y, z);
     w.castShadow = true;
+    w.name = "traffic-car-wheel";
+    wheels.push(w);
     car.add(w);
   });
+
+  // Runtime animation data stays on the visual object so the public obstacle
+  // model and its collision contract remain unchanged.
+  car.userData.wheels = wheels;
+  car.userData.trafficCruiseSpeed = 8 + Math.random() * 5;
+  car.userData.motionPhase = Math.random() * Math.PI * 2;
 
   const headLights = new THREE.Mesh(
     new THREE.BoxGeometry(0.18, 0.08, 0.04),
@@ -800,7 +809,18 @@ function createCar(): THREE.Group {
   const headLightsLeft = headLights.clone();
   headLightsLeft.position.set(-0.32, 0.4, -1.02);
 
-  car.add(headLights, headLightsLeft);
+  // Red rear lights are the side the player reads while approaching and
+  // overtaking, so they provide a much stronger motion/depth cue.
+  const tailLightMaterial = createEmissiveMaterial(0xf04438, 1.35);
+  const tailLightRight = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.1, 0.045),
+    tailLightMaterial
+  );
+  tailLightRight.position.set(0.36, 0.42, 1.02);
+  const tailLightLeft = tailLightRight.clone();
+  tailLightLeft.position.x = -0.36;
+
+  car.add(headLights, headLightsLeft, tailLightRight, tailLightLeft);
 
   return car;
 }

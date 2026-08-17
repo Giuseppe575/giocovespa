@@ -177,6 +177,10 @@ Fonti ufficiali e link sono raccolti in `RESEARCH.md`.
 - primo distretto lungomare con spiaggia, battigia, mare e palme;
 - difficulty director progressivo sui primi 900 m, con apertura più tranquilla;
 - scheduler anti-burst con almeno una corsia libera e monete su traiettorie leggibili;
+- traffico con velocità propria, sorpasso relativo, ruote animate, micro-sospensione e fanali posteriori;
+- collisione swept per non saltare hazard e pickup tra due frame ad alta velocità;
+- fondazione `CircuitDirector` per un loop deterministico di 1.800 m;
+- sequenza circuito definita: Centro storico → Lungomare → Mercato → Collina;
 - ottimizzazione di finestre, segnaletica stradale e illuminazione;
 - fondazioni Figma: 30 token, quattro stili tipografici, effetto card, Cover, Getting Started e pagina Foundations;
 - verifiche automatiche: test unitari, typecheck e build di produzione.
@@ -193,6 +197,8 @@ Queste attività sono sospese esclusivamente perché è stato raggiunto il limit
 
 - strada realmente spline-based con curve visibili;
 - circuiti cittadini distinti: centro storico, lungomare, mercato e collina;
+- rendering a chunk dei distretti con transizioni oltre la nebbia e riciclo senza pop;
+- strada campionata per distanza con posizione, tangente e curvatura reali;
 - `SpawnDirector` evoluto con pattern concatenati e solver di percorribilità;
 - feedback audio, particelle e onboarding contestuale;
 - playtest mobile e desktop sui KPI definiti in questo PRD.

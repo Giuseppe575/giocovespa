@@ -139,6 +139,39 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
+const TRAFFIC_WHEEL_RADIUS = 0.22;
+
+/**
+ * Cars are road users, not parked props: they keep travelling forward while
+ * the player's faster Vespa gains on them. The effective speed is capped from
+ * the current player speed so an overtake always remains readable, even when
+ * the player brakes. Visual suspension is deliberately tiny and never moves
+ * the collision centre or changes lane.
+ */
+function updateTrafficCar(car: THREE.Group, playerSpeed: number, dt: number): number {
+  const preferredSpeed =
+    typeof car.userData.trafficCruiseSpeed === "number"
+      ? car.userData.trafficCruiseSpeed
+      : 10;
+  const trafficSpeed = Math.min(preferredSpeed, Math.max(2.5, playerSpeed * 0.72));
+  const phase =
+    (typeof car.userData.motionPhase === "number" ? car.userData.motionPhase : 0) +
+    dt * (3.2 + trafficSpeed * 0.08);
+  car.userData.motionPhase = phase;
+
+  const wheelSpin = (trafficSpeed / TRAFFIC_WHEEL_RADIUS) * dt;
+  const wheels = car.userData.wheels as THREE.Object3D[] | undefined;
+  wheels?.forEach((wheel) => {
+    // Cylinder axle is its local Y axis before the 90 degree alignment.
+    wheel.rotateY(wheelSpin);
+  });
+
+  car.position.y = Math.sin(phase * 2) * 0.012;
+  car.rotation.x = Math.sin(phase) * 0.007;
+  car.rotation.z = Math.sin(phase * 0.7) * 0.012;
+  return trafficSpeed;
+}
+
 function occupiedHazardLanesAt(z: number, segmentLength = 16): Set<number> {
   const lanes = new Set<number>();
   for (const obstacle of world.obstacles) {
@@ -949,10 +982,17 @@ function updateObstacles(dt: number) {
     spawnCoin(world, coinZ - 4.8, laneIndex);
   }
 
-  // Move cars slightly or keep static; cleanup passed obstacles
+  // Traffic has its own forward speed. Static hazards and pickups scroll at
+  // the full player speed; cars approach more slowly because both vehicles
+  // travel in the same direction.
   for (let i = world.obstacles.length - 1; i >= 0; i--) {
     const o = world.obstacles[i];
-    o.mesh.position.z += dz;
+    o.mesh.userData.previousZ = o.mesh.position.z;
+    const obstacleDz =
+      o.type === "CAR"
+        ? Math.max(0, p.speed - updateTrafficCar(o.mesh, p.speed, dt)) * dt
+        : dz;
+    o.mesh.position.z += obstacleDz;
     o.mesh.position.x = o.laneOffset + getCurveOffset();
 
     if (o.type === "COIN") {
@@ -1027,17 +1067,27 @@ function checkCollisions() {
     const o = world.obstacles[i];
     const oz = o.mesh.position.z;
     const relZ = oz - pz;
+    const previousZ =
+      typeof o.mesh.userData.previousZ === "number"
+        ? o.mesh.userData.previousZ
+        : oz;
+    const previousRelZ = previousZ - pz;
 
     // Use the obstacle's specific collision radius
     const radius = o.collisionRadius;
 
     // Only check obstacles that are close in Z axis
-    if (Math.abs(relZ) > radius * 2.5) continue;
+    const crossedPlayer = previousRelZ * relZ <= 0;
+    const closestRelZ = crossedPlayer
+      ? 0
+      : Math.abs(previousRelZ) < Math.abs(relZ)
+        ? previousRelZ
+        : relZ;
+    if (Math.abs(closestRelZ) > radius * 2.5) continue;
 
     const ox = o.mesh.position.x;
     const dx = px - ox;
-    const dz = pz - oz;
-    const distSq = dx * dx + dz * dz;
+    const distSq = dx * dx + closestRelZ * closestRelZ;
 
     if (distSq < radius * radius) {
       if (o.type === "COIN") {
