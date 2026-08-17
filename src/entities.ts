@@ -12,6 +12,91 @@ const logDebug = (...args: unknown[]) => {
   if (GAME_CONFIG.debug) console.log(...args);
 };
 
+const PALETTE = {
+  sky: 0x9dd9e8,
+  haze: 0xb9e1df,
+  asphalt: 0x35464a,
+  asphaltEdge: 0xe8d8b5,
+  lane: 0xfff3cf,
+  terracotta: 0xc86143,
+  coral: 0xe76f51,
+  cream: 0xf1dfbd,
+  sand: 0xd5ad78,
+  petrol: 0x176b72,
+  sage: 0x78956f,
+  shutters: 0x315e5d,
+  hazardRed: 0xe63b32,
+  hazardAmber: 0xffb000,
+  sea: 0x238ea8,
+  seaDeep: 0x176b8c,
+  beach: 0xe8c98f,
+  palmLeaf: 0x397a55,
+} as const;
+
+const sharedGeometry = {
+  laneDash: new THREE.BoxGeometry(0.09, 0.025, 1.35),
+  window: new THREE.BoxGeometry(0.3, 0.42, 0.045),
+  coinRim: new THREE.TorusGeometry(0.27, 0.055, 10, 28),
+  coinFace: new THREE.CylinderGeometry(0.225, 0.225, 0.055, 28),
+  coinInset: new THREE.CylinderGeometry(0.155, 0.155, 0.062, 24),
+  coinMark: new THREE.BoxGeometry(0.055, 0.22, 0.035),
+  palmTrunk: new THREE.CylinderGeometry(0.09, 0.14, 2.5, 7),
+  palmLeaf: new THREE.ConeGeometry(0.32, 1.55, 5),
+  beachBlock: new THREE.BoxGeometry(8.5, 0.12, 6.2),
+  seaBlock: new THREE.BoxGeometry(34, 0.09, 6.2),
+  foamBlock: new THREE.BoxGeometry(0.38, 0.035, 5.828),
+};
+
+const coinMaterials = {
+  rim: new THREE.MeshStandardMaterial({
+    color: 0xffd35a,
+    emissive: 0x9b5200,
+    emissiveIntensity: 0.65,
+    metalness: 0.82,
+    roughness: 0.2,
+  }),
+  face: new THREE.MeshStandardMaterial({
+    color: 0xf6a91b,
+    emissive: 0x7a3500,
+    emissiveIntensity: 0.35,
+    metalness: 0.72,
+    roughness: 0.27,
+  }),
+  inset: new THREE.MeshStandardMaterial({
+    color: 0xffe28a,
+    emissive: 0xb25d00,
+    emissiveIntensity: 0.5,
+    metalness: 0.68,
+    roughness: 0.22,
+  }),
+  mark: new THREE.MeshStandardMaterial({
+    color: 0xfff3bd,
+    emissive: 0xffa51f,
+    emissiveIntensity: 0.8,
+    metalness: 0.5,
+    roughness: 0.25,
+  }),
+};
+
+const coastMaterials = {
+  sand: new THREE.MeshStandardMaterial({ color: PALETTE.beach, roughness: 1 }),
+  sea: new THREE.MeshStandardMaterial({
+    color: PALETTE.sea,
+    emissive: PALETTE.seaDeep,
+    emissiveIntensity: 0.13,
+    roughness: 0.3,
+    metalness: 0.08,
+  }),
+  foam: new THREE.MeshStandardMaterial({
+    color: 0xe9fbf5,
+    emissive: 0xa8e3df,
+    emissiveIntensity: 0.25,
+    roughness: 0.75,
+  }),
+  trunk: new THREE.MeshStandardMaterial({ color: 0x9a6842, roughness: 1 }),
+  leaf: new THREE.MeshStandardMaterial({ color: PALETTE.palmLeaf, roughness: 0.92 }),
+};
+
 export function createRenderer(): THREE.WebGLRenderer {
   logDebug("createRenderer() - Inizio creazione renderer");
 
@@ -83,7 +168,11 @@ export function createRenderer(): THREE.WebGLRenderer {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  renderer.setClearColor(new THREE.Color(GAME_CONFIG.cityFogColor));
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.setClearColor(new THREE.Color(PALETTE.sky));
 
   // Gestisci perdita del contesto su device vecchi o lenti
   renderer.domElement.addEventListener(
@@ -134,9 +223,9 @@ export function createCamera(): THREE.PerspectiveCamera {
 
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(GAME_CONFIG.cityFogColor);
+  scene.background = new THREE.Color(PALETTE.sky);
   scene.fog = new THREE.Fog(
-    GAME_CONFIG.cityFogColor,
+    PALETTE.haze,
     GAME_CONFIG.fogNear,
     GAME_CONFIG.fogFar
   );
@@ -144,18 +233,18 @@ export function createScene(): THREE.Scene {
 }
 
 export function addLights(scene: THREE.Scene): void {
-  const ambient = new THREE.AmbientLight(GAME_CONFIG.ambientColor, 0.9);
+  const ambient = new THREE.AmbientLight(0xffead1, 0.72);
   scene.add(ambient);
 
   const hemi = new THREE.HemisphereLight(
-    GAME_CONFIG.hemiColorSky,
-    GAME_CONFIG.hemiColorGround,
-    0.6
+    0xc7f2ff,
+    0xb78c62,
+    0.88
   );
   scene.add(hemi);
 
-  const dir = new THREE.DirectionalLight(GAME_CONFIG.sunColor, 1.1);
-  dir.position.set(-12, 25, 30);
+  const dir = new THREE.DirectionalLight(0xffd59a, 2.1);
+  dir.position.set(-18, 28, 22);
   dir.castShadow = true;
   dir.shadow.mapSize.set(1024, 1024);
   dir.shadow.camera.near = 5;
@@ -175,8 +264,8 @@ export function createVespaWithRider(): THREE.Group {
   const group = new THREE.Group();
 
   // Body
-  const bodyMat = createBasicMetal(0x1f7cff);
-  const floorMat = createBasicMetal(0x111111);
+  const bodyMat = createBasicMetal(PALETTE.coral);
+  const floorMat = createBasicMetal(0x26383a);
 
   const chassis = new THREE.Mesh(
     new THREE.BoxGeometry(0.6, 0.25, 1.3),
@@ -264,9 +353,9 @@ export function createVespaWithRider(): THREE.Group {
 
   // Rider (stylized human)
   const skin = createSoftBody(0xf4c9a5);
-  const shirt = createSoftBody(0x202439);
-  const pants = createSoftBody(0x19191c);
-  const helmetMat = createSoftBody(0xffffff);
+  const shirt = createSoftBody(PALETTE.petrol);
+  const pants = createSoftBody(0x26383a);
+  const helmetMat = createSoftBody(PALETTE.cream);
 
   // Legs
   const legGeom = new THREE.BoxGeometry(0.13, 0.45, 0.13);
@@ -329,15 +418,19 @@ export function createVespaWithRider(): THREE.Group {
 export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
   const segments: THREE.Mesh[] = [];
   const material = new THREE.MeshStandardMaterial({
-    color: 0x3a3f45,
-    roughness: 0.85,
-    metalness: 0.04,
+    color: PALETTE.asphalt,
+    roughness: 0.94,
+    metalness: 0,
   });
+  const lineMat = new THREE.MeshStandardMaterial({ color: PALETTE.lane, roughness: 0.82 });
+  const curbLightMat = new THREE.MeshStandardMaterial({ color: PALETTE.cream, roughness: 0.9 });
+  const curbRedMat = new THREE.MeshStandardMaterial({ color: PALETTE.coral, roughness: 0.9 });
+  const walkMat = new THREE.MeshStandardMaterial({ color: PALETTE.asphaltEdge, roughness: 0.98 });
 
   const width = GAME_CONFIG.laneWidth * GAME_CONFIG.lanes + 3;
 
   for (
-    let z = -GAME_CONFIG.roadSegmentLength * 2;
+    let z = 0;
     z > -GAME_CONFIG.roadLength;
     z -= GAME_CONFIG.roadSegmentLength
   ) {
@@ -350,52 +443,43 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
     mesh.position.set(0, 0, z);
     mesh.userData.baseX = 0;
     mesh.receiveShadow = true;
+
+    // Markings and pavements follow the recycled road tile as children.
+    const dashStep = 2.45;
+    const dashesPerLane = Math.ceil(GAME_CONFIG.roadSegmentLength / dashStep);
+    for (let lane = 1; lane < GAME_CONFIG.lanes; lane++) {
+      const x = (lane - GAME_CONFIG.lanes / 2) * GAME_CONFIG.laneWidth;
+      const dashes = new THREE.InstancedMesh(sharedGeometry.laneDash, lineMat, dashesPerLane);
+      const matrix = new THREE.Matrix4();
+      for (let i = 0; i < dashesPerLane; i++) {
+        matrix.makeTranslation(x, 0.085, -GAME_CONFIG.roadSegmentLength / 2 + i * dashStep + 0.8);
+        dashes.setMatrixAt(i, matrix);
+      }
+      dashes.instanceMatrix.needsUpdate = true;
+      dashes.frustumCulled = false;
+      mesh.add(dashes);
+    }
+
+    for (const side of [-1, 1]) {
+      const pavement = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.28, GAME_CONFIG.roadSegmentLength),
+        walkMat
+      );
+      pavement.position.set(side * (width / 2 + 0.9), 0.16, 0);
+      pavement.receiveShadow = true;
+      mesh.add(pavement);
+
+      const tileIndex = Math.abs(Math.round(z / GAME_CONFIG.roadSegmentLength));
+      const curb = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.16, GAME_CONFIG.roadSegmentLength),
+        tileIndex % 2 ? curbRedMat : curbLightMat
+      );
+      curb.position.set(side * (width / 2 + 0.11), 0.13, 0);
+      curb.receiveShadow = true;
+      mesh.add(curb);
+    }
     scene.add(mesh);
     segments.push(mesh);
-  }
-
-  // lane lines
-  const lineMat = new THREE.MeshStandardMaterial({
-    color: 0xf8f8f8,
-    roughness: 0.7,
-  });
-  const dashLength = 1.2;
-  const dashGap = 1;
-  const laneCount = GAME_CONFIG.lanes;
-  const laneWidth = GAME_CONFIG.laneWidth;
-
-  for (let lane = 1; lane < laneCount; lane++) {
-    const x = (lane - laneCount / 2) * laneWidth;
-    for (let i = 0; i < 120; i++) {
-      const geom = new THREE.BoxGeometry(0.08, 0.02, dashLength);
-      const mesh = new THREE.Mesh(geom, lineMat);
-      mesh.position.set(x, 0.07, -i * (dashLength + dashGap));
-      mesh.userData.baseX = x;
-      mesh.receiveShadow = false;
-      mesh.castShadow = false;
-      scene.add(mesh);
-      segments.push(mesh);
-    }
-  }
-
-  // Side sidewalks
-  const sideMat = new THREE.MeshStandardMaterial({
-    color: 0xced4da,
-    roughness: 0.85,
-  });
-
-  for (let i = 0; i < 40; i++) {
-    const geom = new THREE.BoxGeometry(2, 0.3, 5);
-    const left = new THREE.Mesh(geom, sideMat);
-    const right = new THREE.Mesh(geom, sideMat);
-    left.position.set(-width / 2 - 1, 0.15, -i * 5);
-    right.position.set(width / 2 + 1, 0.15, -i * 5);
-    left.userData.baseX = left.position.x;
-    right.userData.baseX = right.position.x;
-    left.receiveShadow = true;
-    right.receiveShadow = true;
-    scene.add(left, right);
-    segments.push(left, right);
   }
 
   return segments;
@@ -410,57 +494,62 @@ function addFacadeWindows(parent: THREE.Group, width: number, height: number, de
   const zMin = -depth / 2 + 0.35;
   const zMax = depth / 2 - 0.35;
   const x = side > 0 ? -(width / 2 - 0.05) : width / 2 - 0.05;
+  const transforms: THREE.Matrix4[] = [];
   for (let r = 0; r < rows; r++) {
     const y = 0.8 + r * (height / rows);
     for (let c = 0; c < cols; c++) {
       const z = zMin + c * ((zMax - zMin) / Math.max(1, cols - 1));
       if (Math.random() < 0.12) continue; // piccoli vuoti casuali
-      const win = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.04), windowMat);
-      win.position.set(x, y, z);
-      win.castShadow = false;
-      win.receiveShadow = false;
-      parent.add(win);
+      transforms.push(new THREE.Matrix4().makeTranslation(x, y, z));
     }
   }
+  const windows = new THREE.InstancedMesh(sharedGeometry.window, windowMat, transforms.length);
+  transforms.forEach((matrix, index) => windows.setMatrixAt(index, matrix));
+  windows.instanceMatrix.needsUpdate = true;
+  windows.castShadow = false;
+  windows.receiveShadow = false;
+  parent.add(windows);
 }
 
-function createBuildingForSide(side: number, worldWidth: number): THREE.Group {
-  const style = choice<"brick" | "concrete" | "glass" | "mixed">(["brick", "concrete", "glass", "mixed"]);
+function createBuildingForSide(side: number, _worldWidth: number): THREE.Group {
+  const style = choice<"terracotta" | "cream" | "petrol" | "sand">([
+    "terracotta", "terracotta", "cream", "cream", "petrol", "sand",
+  ]);
   const group = new THREE.Group();
 
   const params = {
-    brick: {
-      color: 0x8b4a3a,
+    terracotta: {
+      color: PALETTE.terracotta,
+      roughness: 0.94,
+      metalness: 0,
+      winColor: 0xa9d6d2,
+      winEmissive: 0x264a4a,
+    },
+    cream: {
+      color: PALETTE.cream,
+      roughness: 0.96,
+      metalness: 0,
+      winColor: 0x77a7aa,
+      winEmissive: 0x254747,
+    },
+    petrol: {
+      color: PALETTE.petrol,
       roughness: 0.9,
-      metalness: 0.25,
-      winColor: 0xa9c7df,
-      winEmissive: 0x183247,
+      metalness: 0.02,
+      winColor: 0xd7e3cf,
+      winEmissive: 0x344a41,
     },
-    concrete: {
-      color: 0xb7b9bd,
-      roughness: 0.82,
-      metalness: 0.15,
-      winColor: 0x9cb6c8,
-      winEmissive: 0x1f2e3a,
-    },
-    glass: {
-      color: 0x6e869a,
-      roughness: 0.4,
-      metalness: 0.35,
-      winColor: 0xa7c5dd,
-      winEmissive: 0x2a3e54,
-    },
-    mixed: {
-      color: 0xc4c4c4,
-      roughness: 0.78,
-      metalness: 0.2,
-      winColor: 0xa7c5dd,
-      winEmissive: 0x2a3e54,
+    sand: {
+      color: PALETTE.sand,
+      roughness: 0.96,
+      metalness: 0,
+      winColor: 0x8ab5b2,
+      winEmissive: 0x284a49,
     },
   }[style];
 
-  const w = randRange(2.8, style === "glass" ? 6.2 : 4.8);
-  const h = randRange(style === "glass" ? 8 : 5, style === "glass" ? 15 : 11);
+  const w = randRange(3.2, 5.4);
+  const h = randRange(5.2, style === "petrol" ? 12.5 : 10.5);
   const d = randRange(2.4, 4.8);
 
   const body = new THREE.Mesh(
@@ -486,6 +575,18 @@ function createBuildingForSide(side: number, worldWidth: number): THREE.Group {
   });
   addFacadeWindows(group, w, h, d, side, windowMat);
 
+  // Sparse balconies create an Italian facade rhythm without visual noise.
+  if (Math.random() > 0.45) {
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: style === "petrol" ? PALETTE.cream : PALETTE.shutters,
+      roughness: 0.9,
+    });
+    const balcony = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, d * 0.62), accentMat);
+    balcony.position.set(side > 0 ? -w / 2 - 0.08 : w / 2 + 0.08, h * 0.46, 0);
+    balcony.castShadow = true;
+    group.add(balcony);
+  }
+
   // Bordo cornice superiore per dare piu "massa"
   const crown = new THREE.Mesh(
     new THREE.BoxGeometry(w + 0.2, 0.25, d + 0.2),
@@ -499,6 +600,71 @@ function createBuildingForSide(side: number, worldWidth: number): THREE.Group {
   crown.castShadow = true;
   group.add(crown);
 
+  if (Math.random() > 0.72) {
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(Math.max(w, d) * 0.62, 0.9, 4),
+      new THREE.MeshStandardMaterial({ color: 0xa94d35, roughness: 1 })
+    );
+    roof.rotation.y = Math.PI / 4;
+    roof.position.y = h + 0.65;
+    roof.scale.z = d / w;
+    roof.castShadow = true;
+    group.add(roof);
+  }
+
+  return group;
+}
+
+/** A lightweight, recyclable slice of the seaside district. */
+function createCoastalBlock(side: number, blockIndex: number): THREE.Group {
+  const group = new THREE.Group();
+
+  const beach = new THREE.Mesh(
+    sharedGeometry.beachBlock,
+    coastMaterials.sand
+  );
+  beach.position.set(side * 1.15, 0.01, 0);
+  beach.receiveShadow = true;
+
+  const sea = new THREE.Mesh(
+    sharedGeometry.seaBlock,
+    coastMaterials.sea
+  );
+  sea.position.set(side * 22.35, -0.035, 0);
+  sea.receiveShadow = false;
+
+  // A narrow bright band makes the shoreline readable even through the fog.
+  const foam = new THREE.Mesh(
+    sharedGeometry.foamBlock,
+    coastMaterials.foam
+  );
+  foam.position.set(side * 5.35, 0.095, 0);
+
+  group.add(beach, sea, foam);
+
+  // Alternate palms between blocks to keep the district lively but inexpensive.
+  if (blockIndex % 2 === 0) {
+    const palm = new THREE.Group();
+    const trunk = new THREE.Mesh(sharedGeometry.palmTrunk, coastMaterials.trunk);
+    trunk.position.y = 1.25;
+    trunk.rotation.z = side * randRange(-0.07, 0.07);
+    trunk.castShadow = true;
+    palm.add(trunk);
+
+    for (let leafIndex = 0; leafIndex < 5; leafIndex++) {
+      const leaf = new THREE.Mesh(sharedGeometry.palmLeaf, coastMaterials.leaf);
+      leaf.position.y = 2.55;
+      leaf.rotation.z = Math.PI / 2.8;
+      leaf.rotation.y = (leafIndex / 5) * Math.PI * 2;
+      leaf.castShadow = true;
+      palm.add(leaf);
+    }
+
+    palm.position.set(side * 0.5, 0.1, randRange(-1.4, 1.4));
+    palm.rotation.y = randRange(-0.35, 0.35);
+    group.add(palm);
+  }
+
   return group;
 }
 
@@ -507,11 +673,15 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
 
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 40; i++) {
-      const b = createBuildingForSide(side, worldWidth);
+      // A long uninterrupted stretch on the right opens onto the sea.
+      const isCoastalDistrict = side === 1 && i >= 11 && i <= 27;
+      const b = isCoastalDistrict
+        ? createCoastalBlock(side, i)
+        : createBuildingForSide(side, worldWidth);
       b.position.set(
-        side * (worldWidth / 2 + 3 + randRange(0, 2)),
+        side * (worldWidth / 2 + 3 + (isCoastalDistrict ? 0 : randRange(0, 2))),
         0,
-        -i * 5 - randRange(0, 5)
+        -i * 5 - (isCoastalDistrict ? 0 : randRange(0, 5))
       );
       b.userData.baseX = b.position.x;
 
@@ -532,13 +702,13 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
 
 export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
   const lights: THREE.Group[] = [];
-  const count = 40;
+  const count = 20;
   for (let i = 0; i < count; i++) {
-    const z = -i * 10 - 5;
+    const z = -i * 20 - 5;
     for (const side of [-1, 1]) {
       const pole = new THREE.Group();
-      const poleMat = createBasicMetal(0x7b838d);
-      const lampMat = createEmissiveMaterial(0xfff2d1, 0.4);
+      const poleMat = createBasicMetal(PALETTE.petrol);
+      const lampMat = createEmissiveMaterial(0xffdf9a, 1.25);
 
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8),
@@ -576,14 +746,6 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
       pole.position.set(lightX, 0, z);
       pole.userData.baseX = pole.position.x;
 
-      const l = new THREE.PointLight(0xfff2d1, 0.2, 18, 1.4);
-      l.position.set(
-        lamp.position.x,
-        lamp.position.y - 0.08,
-        lamp.position.z
-      );
-      pole.add(l);
-
       scene.add(pole);
       lights.push(pole);
     }
@@ -596,7 +758,7 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
  */
 function createCar(): THREE.Group {
   const car = new THREE.Group();
-  const bodyColor = Math.random() > 0.5 ? 0xff5733 : 0x1abc9c;
+  const bodyColor = choice([PALETTE.coral, PALETTE.petrol, PALETTE.cream, PALETTE.sage]);
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(1.2, 0.35, 2),
     createSoftBody(bodyColor)
@@ -607,7 +769,7 @@ function createCar(): THREE.Group {
 
   const cabin = new THREE.Mesh(
     new THREE.BoxGeometry(0.9, 0.4, 0.8),
-    createSoftBody(0x111111)
+    createSoftBody(0x26383a)
   );
   cabin.position.set(0, 0.75, -0.1);
   cabin.castShadow = true;
@@ -621,13 +783,22 @@ function createCar(): THREE.Group {
     [-0.5, 0.22, 0.8],
     [0.5, 0.22, 0.8],
   ];
+  const wheels: THREE.Mesh[] = [];
   wheelPositions.forEach(([x, y, z]) => {
     const w = new THREE.Mesh(wheelGeom, wheelMat);
     w.rotation.z = Math.PI / 2;
     w.position.set(x, y, z);
     w.castShadow = true;
+    w.name = "traffic-car-wheel";
+    wheels.push(w);
     car.add(w);
   });
+
+  // Runtime animation data stays on the visual object so the public obstacle
+  // model and its collision contract remain unchanged.
+  car.userData.wheels = wheels;
+  car.userData.trafficCruiseSpeed = 8 + Math.random() * 5;
+  car.userData.motionPhase = Math.random() * Math.PI * 2;
 
   const headLights = new THREE.Mesh(
     new THREE.BoxGeometry(0.18, 0.08, 0.04),
@@ -638,7 +809,18 @@ function createCar(): THREE.Group {
   const headLightsLeft = headLights.clone();
   headLightsLeft.position.set(-0.32, 0.4, -1.02);
 
-  car.add(headLights, headLightsLeft);
+  // Red rear lights are the side the player reads while approaching and
+  // overtaking, so they provide a much stronger motion/depth cue.
+  const tailLightMaterial = createEmissiveMaterial(0xf04438, 1.35);
+  const tailLightRight = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.1, 0.045),
+    tailLightMaterial
+  );
+  tailLightRight.position.set(0.36, 0.42, 1.02);
+  const tailLightLeft = tailLightRight.clone();
+  tailLightLeft.position.x = -0.36;
+
+  car.add(headLights, headLightsLeft, tailLightRight, tailLightLeft);
 
   return car;
 }
@@ -647,19 +829,26 @@ function createBarrier(): THREE.Group {
   const group = new THREE.Group();
   const base = new THREE.Mesh(
     new THREE.BoxGeometry(1.6, 0.5, 0.4),
-    createSoftBody(0xd0d3d8)
+    createSoftBody(PALETTE.cream)
   );
   base.castShadow = true;
   base.receiveShadow = true;
 
   const stripes = new THREE.Mesh(
     new THREE.BoxGeometry(1.6, 0.22, 0.42),
-    createSoftBody(0xff4f4f)
+    createEmissiveMaterial(PALETTE.hazardRed, 0.45)
   );
   stripes.position.y = 0.16;
   stripes.castShadow = true;
 
-  group.add(base, stripes);
+  const beaconMat = createEmissiveMaterial(PALETTE.hazardAmber, 1.2);
+  const beaconGeometry = new THREE.SphereGeometry(0.09, 8, 6);
+  const leftBeacon = new THREE.Mesh(beaconGeometry, beaconMat);
+  leftBeacon.position.set(-0.62, 0.38, 0);
+  const rightBeacon = leftBeacon.clone();
+  rightBeacon.position.x = 0.62;
+
+  group.add(base, stripes, leftBeacon, rightBeacon);
   return group;
 }
 
@@ -667,23 +856,28 @@ function createCone(): THREE.Group {
   const group = new THREE.Group();
   const base = new THREE.Mesh(
     new THREE.CylinderGeometry(0.12, 0.18, 0.06, 16),
-    createSoftBody(0xffffff)
+    createSoftBody(PALETTE.cream)
   );
   base.position.y = 0.03;
   const cone = new THREE.Mesh(
     new THREE.ConeGeometry(0.16, 0.42, 16),
-    createSoftBody(0xff7a1b)
+    createEmissiveMaterial(PALETTE.hazardAmber, 0.25)
   );
   cone.position.y = 0.27;
   cone.castShadow = true;
   base.castShadow = true;
-  group.add(base, cone);
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.15, 0.08, 12),
+    createSoftBody(PALETTE.cream)
+  );
+  collar.position.y = 0.25;
+  group.add(base, cone, collar);
   return group;
 }
 
 function createRamp(): THREE.Group {
   const group = new THREE.Group();
-  const mat = createSoftBody(0x8c939d);
+  const mat = createSoftBody(PALETTE.petrol);
   const base = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 2.5), mat);
   base.position.y = 0.09;
   base.castShadow = true;
@@ -694,19 +888,36 @@ function createRamp(): THREE.Group {
   slope.rotation.x = -Math.PI / 10;
   slope.castShadow = true;
 
-  group.add(base, slope);
+  const arrow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.035, 0.35),
+    createEmissiveMaterial(PALETTE.lane, 0.65)
+  );
+  arrow.position.set(0, 0.51, -0.45);
+  arrow.rotation.x = slope.rotation.x;
+
+  group.add(base, slope, arrow);
   return group;
 }
 
 function createCoin(): THREE.Group {
   const group = new THREE.Group();
-  const coin = new THREE.Mesh(
-    new THREE.TorusGeometry(0.26, 0.09, 12, 20),
-    createEmissiveMaterial(0xffd85a, 1.1)
-  );
-  coin.rotation.x = Math.PI / 2;
-  coin.castShadow = false;
-  group.add(coin);
+
+  const rim = new THREE.Mesh(sharedGeometry.coinRim, coinMaterials.rim);
+  const face = new THREE.Mesh(sharedGeometry.coinFace, coinMaterials.face);
+  const inset = new THREE.Mesh(sharedGeometry.coinInset, coinMaterials.inset);
+  face.rotation.x = Math.PI / 2;
+  inset.rotation.x = Math.PI / 2;
+  inset.position.z = 0.035;
+
+  // A simple raised Vespa-style "V" remains clear at gameplay scale.
+  const markLeft = new THREE.Mesh(sharedGeometry.coinMark, coinMaterials.mark);
+  markLeft.position.set(-0.052, 0.01, 0.075);
+  markLeft.rotation.z = -0.43;
+  const markRight = markLeft.clone();
+  markRight.position.x = 0.052;
+  markRight.rotation.z = 0.43;
+
+  group.add(face, rim, inset, markLeft, markRight);
   return group;
 }
 
