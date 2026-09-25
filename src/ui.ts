@@ -1,5 +1,6 @@
 import { ScoreSystem, PERSISTENCE_KEYS } from "./definitions";
 import { persistence } from "./libs/persistence";
+import { RACE_DISTANCE, formatRaceTime } from "./core/race";
 
 type RunStats = ScoreSystem & {
   nearMisses?: number;
@@ -38,7 +39,7 @@ type UIElements = {
   recapMission: HTMLElement;
 };
 
-const MISSION_DISTANCE = 750;
+const MISSION_DISTANCE = RACE_DISTANCE;
 let ui: UIElements | null = null;
 
 const queryRequired = <T extends HTMLElement>(id: string): T => {
@@ -206,7 +207,10 @@ export function showGameOver(scoreSystem: ScoreSystem) {
   const score = Math.floor(stats.score);
   const highScore = Math.floor(stats.highScore);
   const distance = Math.max(0, Math.floor(stats.distance));
-  const completed = stats.missionCompleted ?? distance >= MISSION_DISTANCE;
+  const completed = stats.lapCompleted;
+  queryRequired("game-over-title").textContent = completed ? "Giro completato!" : "Corsa interrotta";
+  queryRequired("recap-time").textContent = formatRaceTime(stats.elapsedSeconds);
+  queryRequired("recap-best-time").textContent = formatRaceTime(stats.bestLapSeconds);
 
   setOverlayVisibility(ui.gameOverOverlay, true);
   setOverlayVisibility(ui.menuOverlay, false);
@@ -219,8 +223,8 @@ export function showGameOver(scoreSystem: ScoreSystem) {
   ui.recapNearMisses.textContent = `${stats.nearMisses ?? 0}`;
   ui.recapBestCombo.textContent = `x${(stats.bestCombo ?? stats.combo).toFixed(1)}`;
   ui.recapMission.textContent = completed
-    ? "Missione completata: 750 m di bella guida!"
-    : `Ancora ${Math.max(0, MISSION_DISTANCE - distance)} m per completare la missione.`;
+    ? stats.newBestLap ? "Nuovo record sul giro!" : "Traguardo raggiunto. Bellissima guida!"
+    : `Mancavano ${Math.max(0, MISSION_DISTANCE - distance)} m al traguardo.`;
   ui.recapMission.classList.toggle("is-complete", completed);
   window.setTimeout(() => ui?.restartBtn.focus(), 0);
 }
@@ -245,6 +249,7 @@ export function updateHUD(
   const missionComplete = distance >= MISSION_DISTANCE;
 
   ui.score.textContent = `${score}`;
+  queryRequired("race-time").textContent = formatRaceTime(scoreSystem.elapsedSeconds);
   ui.speed.textContent = `${Math.round(speed * 3)} km/h`;
   ui.streak.textContent = `x${scoreSystem.combo.toFixed(1)}`;
   ui.coins.textContent = `${scoreSystem.coins}`;
@@ -254,19 +259,19 @@ export function updateHUD(
   setProgress(ui.turboProgress, ui.turboProgressFill, turboPercent, 100);
   setProgress(ui.missionProgress, ui.missionProgressFill, distance, MISSION_DISTANCE);
   ui.missionValue.textContent = missionComplete
-    ? "Missione completata!"
+    ? "FINISH · Giro completato!"
     : `${Math.floor(distance)} / ${MISSION_DISTANCE} m`;
   ui.missionProgress.classList.toggle("is-complete", missionComplete);
   ui.turboProgress.classList.toggle("is-ready", turboCharge >= 0.99);
 
   if (turboCharge >= 0.99) {
-    ui.message.textContent = "Turbo pronto — premi Spazio";
+    ui.message.textContent = "Turbo pronto — Spazio o pulsante ⚡";
     ui.message.style.opacity = "1";
   } else if (turboCharge > 0.3) {
     ui.message.textContent = "Sfiora gli ostacoli e carica il turbo";
     ui.message.style.opacity = "0.82";
   } else {
-    ui.message.textContent = "Guida con stile verso il lungomare";
+    ui.message.textContent = "Segui le curve fino al traguardo";
     ui.message.style.opacity = "0.7";
   }
 }

@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { GameStateMachine } from "./game-state-machine";
 
 describe("GameStateMachine", () => {
+  it("finishes once and supports restart or menu", () => {
+    const machine = new GameStateMachine();
+    machine.dispatch("START");
+    expect(machine.dispatch("FINISH").to).toBe("FINISHED");
+    expect(machine.dispatch("CRASH").changed).toBe(false);
+    expect(machine.dispatch("FINISH").changed).toBe(false);
+    expect(machine.dispatch("RESTART").to).toBe("RUNNING");
+    machine.dispatch("FINISH");
+    expect(machine.dispatch("RETURN_TO_MENU").to).toBe("MENU");
+  });
   it("follows the run lifecycle", () => {
     const machine = new GameStateMachine();
 

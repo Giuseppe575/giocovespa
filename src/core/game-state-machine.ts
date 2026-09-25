@@ -3,6 +3,7 @@ import type { GameState } from "../definitions";
 export type GameStateEvent =
   | "START"
   | "CRASH"
+  | "FINISH"
   | "RESTART"
   | "RETURN_TO_MENU";
 
@@ -22,10 +23,15 @@ const TRANSITIONS: Readonly<
     START: "RUNNING",
   },
   RUNNING: {
+    FINISH: "FINISHED",
     CRASH: "GAME_OVER",
     RETURN_TO_MENU: "MENU",
   },
   GAME_OVER: {
+    RESTART: "RUNNING",
+    RETURN_TO_MENU: "MENU",
+  },
+  FINISHED: {
     RESTART: "RUNNING",
     RETURN_TO_MENU: "MENU",
   },

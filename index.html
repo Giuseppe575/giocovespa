@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#79c8e8" />
-    <title>Vespa City Ride — Cartolina italiana in corsa</title>
+    <meta name="theme-color" content="#172a31" />
+    <title>Vespa City Ride — Un giro d'Italia</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23F6C453'/%3E%3Cpath d='M24 58h52l-8 14H34z' fill='%2312233F'/%3E%3Ccircle cx='36' cy='74' r='9' fill='%2312233F'/%3E%3Ccircle cx='67' cy='74' r='9' fill='%2312233F'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./src/styles/index.css" />
   </head>
@@ -30,9 +30,10 @@
         </div>
 
         <div class="hud-mission" aria-label="Missione della corsa">
-          <span class="hud-label">Missione</span>
-          <span id="mission-value" class="mission-copy">Raggiungi 750 m</span>
-          <div id="mission-progress" class="progress-track progress-track-small" role="progressbar" aria-label="Progresso missione" aria-valuemin="0" aria-valuemax="750" aria-valuenow="0">
+          <span class="hud-label" id="district-value">Centro storico · Giro 1</span>
+          <span id="mission-value" class="mission-copy">Traguardo a 1800 m</span>
+          <span id="race-time" aria-label="Tempo di gara">0:00.00</span>
+          <div id="mission-progress" class="progress-track progress-track-small" role="progressbar" aria-label="Progresso del giro" aria-valuemin="0" aria-valuemax="1800" aria-valuenow="0">
             <span class="progress-fill"></span>
           </div>
         </div>
@@ -79,15 +80,15 @@
     <div id="menu-overlay" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="menu-title" aria-describedby="menu-description" aria-hidden="false">
       <div class="panel menu-panel">
         <div class="panel-accent" aria-hidden="true"></div>
-        <p class="eyebrow">Cartolina italiana in corsa</p>
+        <p class="eyebrow">Un giro d'Italia</p>
         <h1 id="menu-title"><span>Vespa</span> City Ride</h1>
-        <p id="menu-description" class="panel-lead">Sfreccia tra vicoli e lungomare. Guida con stile, raccogli monete e fai bella figura.</p>
+        <p id="menu-description" class="panel-lead">Segui la costa, attraversa i vicoli e goditi la strada. Raccogli monete e trova il tuo ritmo.</p>
 
         <div class="menu-cards">
           <div class="mission-card">
-            <span class="card-kicker">Missione di oggi</span>
-            <strong>Raggiungi 750 m</strong>
-            <span>La corsa continua anche dopo il traguardo.</span>
+            <span class="card-kicker">Il tuo circuito</span>
+            <strong>Un giro · 1800 m</strong>
+            <span>Quattro quartieri, un traguardo. Batti il tuo tempo!</span>
           </div>
           <div class="record-card">
             <span class="card-kicker">Il tuo record</span>
@@ -96,6 +97,20 @@
           </div>
         </div>
 
+        <fieldset class="color-picker"><legend>Il colore della tua Vespa</legend>
+          <label><input type="radio" name="scooter-color" value="red" checked /><span class="color-swatch swatch-red"></span>Rossa</label>
+          <label><input type="radio" name="scooter-color" value="white" /><span class="color-swatch swatch-white"></span>Bianca</label>
+          <label><input type="radio" name="scooter-color" value="gray" /><span class="color-swatch swatch-gray"></span>Grigia</label>
+        </fieldset>
+        <label class="route-picker" for="route-select">Da dove partiamo?
+          <select id="route-select">
+            <option value="0">Centro storico · bar e botteghe</option>
+            <option value="120">Piazza · chiesa e fontana</option>
+            <option value="420">Lungomare · spiaggia e palme</option>
+            <option value="940">Mercato · bancarelle e colori</option>
+            <option value="1300">Collina · ville e cipressi</option>
+          </select>
+        </label>
         <div class="controls-summary" aria-label="Comandi">
           <span><kbd>A</kbd><kbd>D</kbd> Sterza</span>
           <span><kbd>W</kbd><kbd>S</kbd> Ritmo</span>
@@ -119,10 +134,13 @@
           <div class="recap-stat"><span>Monete</span><strong id="recap-coins">0</strong></div>
           <div class="recap-stat"><span>Near-miss</span><strong id="recap-near-misses">0</strong></div>
           <div class="recap-stat"><span>Combo migliore</span><strong id="recap-best-combo">x1.0</strong></div>
+          <div class="recap-stat"><span>Tempo di gara</span><strong id="recap-time">0:00.00</strong></div>
+          <div class="recap-stat"><span>Miglior giro</span><strong id="recap-best-time">—</strong></div>
         </div>
 
-        <p id="recap-mission" class="mission-result">Ancora un po’: il traguardo è a 750 m.</p>
+        <p id="recap-mission" class="mission-result">Traguardo a 1800 m.</p>
         <button id="restart-btn" class="primary-cta" type="button"><span>Ancora un giro</span><span aria-hidden="true">↻</span></button>
+        <button id="menu-return-btn" class="menu-return" type="button">Cambia Vespa o partenza</button>
       </div>
     </div>
 

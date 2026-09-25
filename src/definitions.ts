@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export type GameState = "MENU" | "RUNNING" | "GAME_OVER";
+export type GameState = "MENU" | "RUNNING" | "GAME_OVER" | "FINISHED";
 
 export type InputState = {
   left: boolean;
@@ -39,6 +39,7 @@ export type Obstacle = {
 };
 
 export type World = {
+  trackDistance: number;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
@@ -53,6 +54,10 @@ export type World = {
 };
 
 export type ScoreSystem = {
+  elapsedSeconds: number;
+  lapCompleted: boolean;
+  bestLapSeconds: number | null;
+  newBestLap: boolean;
   score: number;
   highScore: number;
   distance: number;
@@ -70,6 +75,7 @@ export type AudioSystem = {
   engineNode: OscillatorNode | null;
   engineOvertone: OscillatorNode | null;
   engineGain: GainNode | null;
+  engineOutputGain: GainNode | null;
   engineFilter: BiquadFilterNode | null;
   lastWhooshTime: number;
 };

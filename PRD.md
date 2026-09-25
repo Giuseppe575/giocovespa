@@ -166,6 +166,14 @@ Fonti ufficiali e link sono raccolti in `RESEARCH.md`.
 
 ## 15. Stato di avanzamento — 16 agosto 2026
 
+### Aggiornamento grafico — 25 settembre 2026
+
+Ultima revisione approvata dal riferimento visivo dell'utente: scooter classico bombato con sella nera/cromature, casco chiaro e giacca petrolio; vernice rossa, bianca o grigia selezionabile e persistente. Modello originale procedurale senza asset esterni. Centro a due corsie con restringimento graduale, locali aperti al posto dei pannelli, clienti seduti, pedoni sui marciapiedi, piazza con chiesa/campanile/fontana. La selezione iniziale include anche la piazza. Questa revisione sostituisce la sperimentazione precedente con scooter GLB e la ricerca del pilota fotografico.
+
+Seconda tranche: strada campionata con curve reali; rendering collegato al circuito di 1.800 m; quartieri centro storico, lungomare, mercato e collina selezionabili alla partenza; botteghe, bar, ristoranti, vetrine, tende e tavolini. Ostacoli e collisioni restano allineati alle corsie nelle curve. Distanza HUD e progressione usano i metri effettivamente percorsi. Motore silenziato dopo urto, mute e cambio scheda mediante gate audio separato, verificato anche al riavvio. Scooter GLB CC0 incluso nella build; pilota fotorealistico ancora da acquisire con licenza verificata. Verifiche: 31 test, TypeScript, prove browser per quattro quartieri e ciclo corsa → urto → ripartenza.
+
+Implementati cielo atmosferico e riflessi ambientali, illuminazione unificata con ombre, materiali procedurali per asfalto/pavimenti/facciate, balconi, mare animato, palme dettagliate e arredo del lungomare. Scooter e traffico hanno forme arrotondate e dettagli di carrozzeria; HUD e menu adottano vetro scuro e avorio. Due agenti con modello leggero hanno curato veicoli e UI sotto supervisione. Direzione, budget e limiti sono documentati in `VISUAL_DESIGN.md`. Il risultato rimane 3D procedurale: asset fotorealistici e collegamento del circuito al renderer restano lavoro futuro.
+
 ### Completato
 
 - audit del prodotto, benchmark e architettura incrementale;
@@ -202,3 +210,11 @@ Queste attività sono sospese esclusivamente perché è stato raggiunto il limit
 - `SpawnDirector` evoluto con pattern concatenati e solver di percorribilità;
 - feedback audio, particelle e onboarding contestuale;
 - playtest mobile e desktop sui KPI definiti in questo PRD.
+
+## Aggiornamento release · 25 settembre 2026
+
+Implementati in questa release: strada curva campionata per distanza, quattro quartieri e riciclo dello scenario, centro storico a due corsie con locali aperti/persone/piazza/chiesa, Vespa classica con scelta rosso/bianco/grigio. Il rendering resta procedurale, non fotorealistico da scansioni. La precedente proposta di modello GLB è sostituita dal modello originale aderente all'ultimo riferimento utente.
+
+La corsa dura un giro di 1800 m dalla partenza selezionata. Un banner FINISH attraversa l'intera carreggiata. Al raggiungimento esatto del traguardo si bloccano avanzamento, punteggio, cronometro e motore; dopo una breve pausa compare il riepilogo con tempo e miglior giro oltre alle statistiche. Un incidente non aggiorna il record sul giro. Riavvio e ritorno alla scelta iniziale disponibili.
+
+Mobile: sterzo con trascinamento sulla strada, pedali con Pointer Events e cattura, secondo dito per accelerare/frenare senza alterare lo sterzo; rilascio e cancellazione azzerano il comando. Interfaccia verificata in verticale e orizzontale tramite emulazione Chromium. Prove hardware e Safari iOS ancora da svolgere; vedere STATUS.md.

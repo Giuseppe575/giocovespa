@@ -1,5 +1,10 @@
 import * as THREE from "three";
+import { facadeGeometry, surfaces } from "./visuals/surfaces";
+import { seaMaterial } from "./visuals/atmosphere";
+import { enhanceCar, enhanceScooter } from "./visuals/vehicle-details";
+import { createPalm, dressCoast } from "./visuals/coast";
 import { GAME_CONFIG, Obstacle, ObstacleType, World } from "./definitions";
+import { streetLayout } from "./core/road-path";
 import {
   choice,
   createBasicMetal,
@@ -35,16 +40,13 @@ const PALETTE = {
 
 const sharedGeometry = {
   laneDash: new THREE.BoxGeometry(0.09, 0.025, 1.35),
-  window: new THREE.BoxGeometry(0.3, 0.42, 0.045),
   coinRim: new THREE.TorusGeometry(0.27, 0.055, 10, 28),
   coinFace: new THREE.CylinderGeometry(0.225, 0.225, 0.055, 28),
   coinInset: new THREE.CylinderGeometry(0.155, 0.155, 0.062, 24),
   coinMark: new THREE.BoxGeometry(0.055, 0.22, 0.035),
-  palmTrunk: new THREE.CylinderGeometry(0.09, 0.14, 2.5, 7),
-  palmLeaf: new THREE.ConeGeometry(0.32, 1.55, 5),
-  beachBlock: new THREE.BoxGeometry(8.5, 0.12, 6.2),
-  seaBlock: new THREE.BoxGeometry(34, 0.09, 6.2),
-  foamBlock: new THREE.BoxGeometry(0.38, 0.035, 5.828),
+  beachBlock: new THREE.BoxGeometry(8.5, 0.12, 5),
+  seaBlock: new THREE.PlaneGeometry(110, 5),
+  foamBlock: new THREE.PlaneGeometry(0.38, 5),
 };
 
 const coinMaterials = {
@@ -79,22 +81,12 @@ const coinMaterials = {
 };
 
 const coastMaterials = {
-  sand: new THREE.MeshStandardMaterial({ color: PALETTE.beach, roughness: 1 }),
-  sea: new THREE.MeshStandardMaterial({
-    color: PALETTE.sea,
-    emissive: PALETTE.seaDeep,
-    emissiveIntensity: 0.13,
-    roughness: 0.3,
-    metalness: 0.08,
-  }),
   foam: new THREE.MeshStandardMaterial({
     color: 0xe9fbf5,
     emissive: 0xa8e3df,
     emissiveIntensity: 0.25,
     roughness: 0.75,
   }),
-  trunk: new THREE.MeshStandardMaterial({ color: 0x9a6842, roughness: 1 }),
-  leaf: new THREE.MeshStandardMaterial({ color: PALETTE.palmLeaf, roughness: 0.92 }),
 };
 
 export function createRenderer(): THREE.WebGLRenderer {
@@ -166,12 +158,12 @@ export function createRenderer(): THREE.WebGLRenderer {
   }
 
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.matchMedia("(pointer: coarse)").matches ? 1.5 : 1.75));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 0.95;
   renderer.setClearColor(new THREE.Color(PALETTE.sky));
 
   // Gestisci perdita del contesto su device vecchi o lenti
@@ -216,7 +208,7 @@ export function createCamera(): THREE.PerspectiveCamera {
     GAME_CONFIG.fov,
     window.innerWidth / window.innerHeight,
     0.1,
-    300
+    700
   );
   return camera;
 }
@@ -230,30 +222,6 @@ export function createScene(): THREE.Scene {
     GAME_CONFIG.fogFar
   );
   return scene;
-}
-
-export function addLights(scene: THREE.Scene): void {
-  const ambient = new THREE.AmbientLight(0xffead1, 0.72);
-  scene.add(ambient);
-
-  const hemi = new THREE.HemisphereLight(
-    0xc7f2ff,
-    0xb78c62,
-    0.88
-  );
-  scene.add(hemi);
-
-  const dir = new THREE.DirectionalLight(0xffd59a, 2.1);
-  dir.position.set(-18, 28, 22);
-  dir.castShadow = true;
-  dir.shadow.mapSize.set(1024, 1024);
-  dir.shadow.camera.near = 5;
-  dir.shadow.camera.far = 80;
-  dir.shadow.camera.left = -40;
-  dir.shadow.camera.right = 40;
-  dir.shadow.camera.top = 40;
-  dir.shadow.camera.bottom = -40;
-  scene.add(dir);
 }
 
 /**
@@ -294,9 +262,10 @@ export function createVespaWithRider(): THREE.Group {
   group.add(floor);
 
   const rearSide = new THREE.Mesh(
-    new THREE.BoxGeometry(0.65, 0.55, 0.7),
+    new THREE.SphereGeometry(1, 28, 20),
     bodyMat
   );
+  rearSide.scale.set(0.34, 0.29, 0.42);
   rearSide.position.set(0, 0.8, 0.5);
   rearSide.castShadow = true;
   group.add(rearSide);
@@ -355,28 +324,34 @@ export function createVespaWithRider(): THREE.Group {
   const skin = createSoftBody(0xf4c9a5);
   const shirt = createSoftBody(PALETTE.petrol);
   const pants = createSoftBody(0x26383a);
-  const helmetMat = createSoftBody(PALETTE.cream);
+  const helmetMat = new THREE.MeshStandardMaterial({color:0xece7d9,roughness:.28,metalness:.15});
 
   // Legs
-  const legGeom = new THREE.BoxGeometry(0.13, 0.45, 0.13);
+  const legGeom = new THREE.CapsuleGeometry(0.065, 0.27, 4, 10);
   const leftLeg = new THREE.Mesh(legGeom, pants);
   leftLeg.position.set(-0.09, 0.8, 0.15);
+  leftLeg.rotation.x = -.45;
   const rightLeg = leftLeg.clone();
   rightLeg.position.x = 0.09;
 
   // Torso
   const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.42, 0.2),
+    new THREE.CapsuleGeometry(0.155, 0.2, 6, 12),
     shirt
   );
   torso.position.set(0, 1.25, 0.1);
+  torso.scale.z = .7;
+  torso.rotation.x = -.15;
 
   // Arms
-  const armGeom = new THREE.BoxGeometry(0.11, 0.35, 0.11);
+  const armGeom = new THREE.CapsuleGeometry(0.055, 0.28, 4, 10);
   const leftArm = new THREE.Mesh(armGeom, shirt);
   leftArm.position.set(-0.26, 1.3, -0.2);
+  leftArm.rotation.x = -.9;
+  leftArm.rotation.z = -.2;
   const rightArm = leftArm.clone();
   rightArm.position.x = 0.26;
+  rightArm.rotation.z = .2;
 
   // Head + helmet
   const head = new THREE.Mesh(
@@ -412,20 +387,16 @@ export function createVespaWithRider(): THREE.Group {
     }
   });
 
+  enhanceScooter(group);
   return group;
 }
 
 export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
   const segments: THREE.Mesh[] = [];
-  const material = new THREE.MeshStandardMaterial({
-    color: PALETTE.asphalt,
-    roughness: 0.94,
-    metalness: 0,
-  });
+  const material = surfaces().asphalt;
   const lineMat = new THREE.MeshStandardMaterial({ color: PALETTE.lane, roughness: 0.82 });
-  const curbLightMat = new THREE.MeshStandardMaterial({ color: PALETTE.cream, roughness: 0.9 });
-  const curbRedMat = new THREE.MeshStandardMaterial({ color: PALETTE.coral, roughness: 0.9 });
-  const walkMat = new THREE.MeshStandardMaterial({ color: PALETTE.asphaltEdge, roughness: 0.98 });
+  const curbLightMat = surfaces().stone;
+  const walkMat = surfaces().pavement;
 
   const width = GAME_CONFIG.laneWidth * GAME_CONFIG.lanes + 3;
 
@@ -469,10 +440,9 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
       pavement.receiveShadow = true;
       mesh.add(pavement);
 
-      const tileIndex = Math.abs(Math.round(z / GAME_CONFIG.roadSegmentLength));
       const curb = new THREE.Mesh(
         new THREE.BoxGeometry(0.22, 0.16, GAME_CONFIG.roadSegmentLength),
-        tileIndex % 2 ? curbRedMat : curbLightMat
+        curbLightMat
       );
       curb.position.set(side * (width / 2 + 0.11), 0.13, 0);
       curb.receiveShadow = true;
@@ -488,113 +458,47 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
 /**
  * Create simple futuristic / Italian city-style buildings.
  */
-function addFacadeWindows(parent: THREE.Group, width: number, height: number, depth: number, side: number, windowMat: THREE.Material) {
-  const cols = Math.max(2, Math.floor(width / 0.9));
-  const rows = Math.max(3, Math.floor(height / 0.9));
-  const zMin = -depth / 2 + 0.35;
-  const zMax = depth / 2 - 0.35;
-  const x = side > 0 ? -(width / 2 - 0.05) : width / 2 - 0.05;
-  const transforms: THREE.Matrix4[] = [];
-  for (let r = 0; r < rows; r++) {
-    const y = 0.8 + r * (height / rows);
-    for (let c = 0; c < cols; c++) {
-      const z = zMin + c * ((zMax - zMin) / Math.max(1, cols - 1));
-      if (Math.random() < 0.12) continue; // piccoli vuoti casuali
-      transforms.push(new THREE.Matrix4().makeTranslation(x, y, z));
-    }
-  }
-  const windows = new THREE.InstancedMesh(sharedGeometry.window, windowMat, transforms.length);
-  transforms.forEach((matrix, index) => windows.setMatrixAt(index, matrix));
-  windows.instanceMatrix.needsUpdate = true;
-  windows.castShadow = false;
-  windows.receiveShadow = false;
-  parent.add(windows);
-}
-
 function createBuildingForSide(side: number, _worldWidth: number): THREE.Group {
   const style = choice<"terracotta" | "cream" | "petrol" | "sand">([
     "terracotta", "terracotta", "cream", "cream", "petrol", "sand",
   ]);
   const group = new THREE.Group();
 
-  const params = {
-    terracotta: {
-      color: PALETTE.terracotta,
-      roughness: 0.94,
-      metalness: 0,
-      winColor: 0xa9d6d2,
-      winEmissive: 0x264a4a,
-    },
-    cream: {
-      color: PALETTE.cream,
-      roughness: 0.96,
-      metalness: 0,
-      winColor: 0x77a7aa,
-      winEmissive: 0x254747,
-    },
-    petrol: {
-      color: PALETTE.petrol,
-      roughness: 0.9,
-      metalness: 0.02,
-      winColor: 0xd7e3cf,
-      winEmissive: 0x344a41,
-    },
-    sand: {
-      color: PALETTE.sand,
-      roughness: 0.96,
-      metalness: 0,
-      winColor: 0x8ab5b2,
-      winEmissive: 0x284a49,
-    },
-  }[style];
-
   const w = randRange(3.2, 5.4);
-  const h = randRange(5.2, style === "petrol" ? 12.5 : 10.5);
+  const h = choice([6, 6, 9, 9, 12]);
   const d = randRange(2.4, 4.8);
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({
-      color: params.color,
-      metalness: params.metalness,
-      roughness: params.roughness,
-    })
+    facadeGeometry(w, h, d),
+    surfaces().facades[["terracotta", "cream", "petrol", "sand"].indexOf(style)]
   );
   body.position.y = h / 2;
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
 
-  // Facciata lato strada
-  const windowMat = new THREE.MeshStandardMaterial({
-    color: params.winColor,
-    emissive: params.winEmissive,
-    emissiveIntensity: 0.15,
-    metalness: 0.1,
-    roughness: 0.35,
-  });
-  addFacadeWindows(group, w, h, d, side, windowMat);
-
-  // Sparse balconies create an Italian facade rhythm without visual noise.
+  // Deep stone balconies catch the sun; the facade texture carries window detail.
   if (Math.random() > 0.45) {
     const accentMat = new THREE.MeshStandardMaterial({
       color: style === "petrol" ? PALETTE.cream : PALETTE.shutters,
       roughness: 0.9,
     });
-    const balcony = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, d * 0.62), accentMat);
-    balcony.position.set(side > 0 ? -w / 2 - 0.08 : w / 2 + 0.08, h * 0.46, 0);
+    const balcony = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.12, d * 0.62), surfaces().stone);
+    balcony.position.set(-side * (w / 2 + 0.2), 3.04, 0);
     balcony.castShadow = true;
     group.add(balcony);
+    const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(.04,.62,.04), accentMat, 8);
+    const matrix = new THREE.Matrix4();
+    for(let i=0;i<8;i++) rails.setMatrixAt(i,matrix.makeTranslation(-side*(w/2+.49),3.4,(i/7-.5)*d*.62));
+    const railTop = new THREE.Mesh(new THREE.BoxGeometry(.045,.045,d*.65),surfaces().iron);
+    railTop.position.set(-side*(w/2+.49),3.73,0);
+    group.add(rails,railTop);
   }
 
   // Bordo cornice superiore per dare piu "massa"
   const crown = new THREE.Mesh(
     new THREE.BoxGeometry(w + 0.2, 0.25, d + 0.2),
-    new THREE.MeshStandardMaterial({
-      color: params.color,
-      metalness: params.metalness * 0.6,
-      roughness: Math.min(1, params.roughness + 0.05),
-    })
+    surfaces().stone
   );
   crown.position.set(0, h + 0.12, 0);
   crown.castShadow = true;
@@ -603,7 +507,7 @@ function createBuildingForSide(side: number, _worldWidth: number): THREE.Group {
   if (Math.random() > 0.72) {
     const roof = new THREE.Mesh(
       new THREE.ConeGeometry(Math.max(w, d) * 0.62, 0.9, 4),
-      new THREE.MeshStandardMaterial({ color: 0xa94d35, roughness: 1 })
+      surfaces().roof
     );
     roof.rotation.y = Math.PI / 4;
     roof.position.y = h + 0.65;
@@ -621,16 +525,17 @@ function createCoastalBlock(side: number, blockIndex: number): THREE.Group {
 
   const beach = new THREE.Mesh(
     sharedGeometry.beachBlock,
-    coastMaterials.sand
+    surfaces().sand
   );
   beach.position.set(side * 1.15, 0.01, 0);
   beach.receiveShadow = true;
 
   const sea = new THREE.Mesh(
     sharedGeometry.seaBlock,
-    coastMaterials.sea
+    seaMaterial()
   );
-  sea.position.set(side * 22.35, -0.035, 0);
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.set(side * 60.35, 0.015, 0);
   sea.receiveShadow = false;
 
   // A narrow bright band makes the shoreline readable even through the fog.
@@ -638,33 +543,19 @@ function createCoastalBlock(side: number, blockIndex: number): THREE.Group {
     sharedGeometry.foamBlock,
     coastMaterials.foam
   );
-  foam.position.set(side * 5.35, 0.095, 0);
+  foam.rotation.x = -Math.PI / 2;
+  foam.position.set(side * 5.35, 0.02, 0);
 
   group.add(beach, sea, foam);
 
   // Alternate palms between blocks to keep the district lively but inexpensive.
   if (blockIndex % 2 === 0) {
-    const palm = new THREE.Group();
-    const trunk = new THREE.Mesh(sharedGeometry.palmTrunk, coastMaterials.trunk);
-    trunk.position.y = 1.25;
-    trunk.rotation.z = side * randRange(-0.07, 0.07);
-    trunk.castShadow = true;
-    palm.add(trunk);
-
-    for (let leafIndex = 0; leafIndex < 5; leafIndex++) {
-      const leaf = new THREE.Mesh(sharedGeometry.palmLeaf, coastMaterials.leaf);
-      leaf.position.y = 2.55;
-      leaf.rotation.z = Math.PI / 2.8;
-      leaf.rotation.y = (leafIndex / 5) * Math.PI * 2;
-      leaf.castShadow = true;
-      palm.add(leaf);
-    }
-
+    const palm = createPalm();
     palm.position.set(side * 0.5, 0.1, randRange(-1.4, 1.4));
     palm.rotation.y = randRange(-0.35, 0.35);
     group.add(palm);
   }
-
+  dressCoast(group, blockIndex);
   return group;
 }
 
@@ -674,7 +565,7 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 40; i++) {
       // A long uninterrupted stretch on the right opens onto the sea.
-      const isCoastalDistrict = side === 1 && i >= 11 && i <= 27;
+      const isCoastalDistrict = side === 1 && i >= 3 && i <= 27;
       const b = isCoastalDistrict
         ? createCoastalBlock(side, i)
         : createBuildingForSide(side, worldWidth);
@@ -684,13 +575,6 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
         -i * 5 - (isCoastalDistrict ? 0 : randRange(0, 5))
       );
       b.userData.baseX = b.position.x;
-
-      b.traverse((obj) => {
-        if ((obj as THREE.Mesh).isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
 
       scene.add(b);
       buildings.push(b);
@@ -821,7 +705,7 @@ function createCar(): THREE.Group {
   tailLightLeft.position.x = -0.36;
 
   car.add(headLights, headLightsLeft, tailLightRight, tailLightLeft);
-
+  enhanceCar(car);
   return car;
 }
 
@@ -927,6 +811,7 @@ function pickLaneIndex(
   checkDistance: number,
   avoidLanes: Set<number> = new Set()
 ): number {
+  const allowedLanes = streetLayout(world.trackDistance - 5 - zSpawn).lanes;
   const laneOccupancy = new Map<number, number>();
   for (let i = 0; i < GAME_CONFIG.lanes; i++) {
     laneOccupancy.set(i, 0);
@@ -934,8 +819,8 @@ function pickLaneIndex(
 
   for (const obstacle of world.obstacles) {
     if (obstacle.type === "COIN") continue;
-    const obstacleZ = obstacle.mesh.position.z;
-    if (obstacleZ < zSpawn && obstacleZ > zSpawn - checkDistance) {
+    const obstacleZ = obstacle.mesh.userData.trackZ ?? obstacle.mesh.position.z;
+    if (Math.abs(obstacleZ - zSpawn) < checkDistance) {
       const lane = obstacle.laneIndex;
       laneOccupancy.set(lane, (laneOccupancy.get(lane) || 0) + 1);
     }
@@ -943,6 +828,7 @@ function pickLaneIndex(
 
   const freeLanes: number[] = [];
   for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (!allowedLanes.includes(i)) continue;
     if (laneOccupancy.get(i) === 0 && !avoidLanes.has(i)) {
       freeLanes.push(i);
     }
@@ -955,6 +841,7 @@ function pickLaneIndex(
   let minOccupancy = Infinity;
   let laneIndex = 0;
   for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (!allowedLanes.includes(i)) continue;
     if (avoidLanes.has(i)) continue;
     const occupancy = laneOccupancy.get(i) || 0;
     if (occupancy < minOccupancy) {
@@ -998,6 +885,7 @@ export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: nu
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0, zSpawn);
+  mesh.userData.trackZ = zSpawn;
   mesh.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = true;
@@ -1036,6 +924,7 @@ export function spawnRamp(world: World, zSpawn: number, lastSpawnedLanes: number
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0, zSpawn);
+  mesh.userData.trackZ = zSpawn;
   mesh.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = true;
@@ -1070,6 +959,7 @@ export function spawnCoin(world: World, zSpawn: number, laneIndex?: number): Obs
     (lane - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0.6, zSpawn);
+  mesh.userData.trackZ = zSpawn;
   mesh.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = false;

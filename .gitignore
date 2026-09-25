@@ -25,6 +25,7 @@ npm-debug.log*
 # Local browser QA artifacts
 .playwright-cli/
 output/playwright/
+.playwright-mcp/
 
 # Local Figma generation ledger
 .figma-design-state.json

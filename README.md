@@ -1,94 +1,45 @@
-# Vespa City Ride 3D
+# Vespa City Ride
 
-Un gioco 3D dove guidi una Vespa attraverso la città, evitando auto e ostacoli mentre colleziona punti.
+Un giro di 1800 m attraverso centro storico, lungomare, mercato e collina: curve, traffico, monete e turbo, fino a FINISH.
 
-## Caratteristiche
+[Gioca online](https://giuseppe575.github.io/giocovespa/)
 
-- Grafica 3D realizzata con Three.js
-- Controlli intuitivi con tastiera
-- Sistema di punteggio con moltiplicatore di serie
-- Modalità turbo
-- Salvataggio del record personale
+## Come giocare
 
-## Come Giocare
+Scegli la Vespa rossa, bianca o grigia e il quartiere di partenza. Completa il giro evitando gli ostacoli. All'arrivo il mezzo si ferma: punteggio, tempo e record vengono salvati nel browser. Il traguardo si trova sempre a 1800 m dalla partenza scelta.
 
-### Controlli
+- Tastiera: A/D o frecce per sterzare; W/S o frecce su/giù per accelerare/frenare; Spazio per turbo carico.
+- Mobile: trascina sulla strada per sterzare e tieni premuti i pedali. Sterzo e acceleratore funzionano anche con due dita. Tocca Turbo quando carico.
+- Orizzontale consigliato; menu e risultati funzionano anche in verticale.
+- Nascondere la scheda sospende la corsa e silenzia il motore.
 
-- **← → / A D**: Sterza la Vespa
-- **W / ↑**: Accelera
-- **S / ↓**: Rallenta
-- **Spazio**: Attiva il turbo istantaneo (quando disponibile)
+## Sviluppo
 
-### Obiettivo
+Servono Node.js e npm. Il sorgente TypeScript richiede Vite: non aprire direttamente index.html con un semplice server statico.
 
-Sopravvivi il più a lungo possibile evitando collisioni con auto e ostacoli. Più a lungo sopravvivi senza collisioni, maggiore sarà il tuo moltiplicatore di punti!
-
-## Installazione
-
-### Opzione 1: Apertura Diretta (Consigliata per questo progetto)
-
-Poiché il progetto utilizza moduli ES6 e TypeScript direttamente dal browser tramite CDN:
-
-1. Clona il repository:
-   ```bash
-   git clone https://github.com/Giuseppe575/giocovespa.git
-   cd giocovespa
-   ```
-
-2. Apri il file `index.html` con un server locale. Puoi usare:
-
-   - **Python 3**:
-     ```bash
-     python -m http.server 8000
-     ```
-
-   - **Node.js (http-server)**:
-     ```bash
-     npx http-server -p 8000
-     ```
-
-   - **Live Server** (estensione VS Code)
-
-3. Apri il browser all'indirizzo `http://localhost:8000`
-
-### Opzione 2: GitHub Pages
-
-Il gioco può essere hostato direttamente su GitHub Pages:
-
-1. Vai su Settings del repository
-2. Nella sezione "Pages", seleziona il branch `main` come source
-3. Il gioco sarà disponibile all'indirizzo: `https://giuseppe575.github.io/giocovespa/`
-
-## Struttura del Progetto
-
-```
-giocovespa/
-├── index.html              # File HTML principale
-├── src/
-│   ├── main.ts            # Entry point dell'applicazione
-│   ├── game.ts            # Logica principale del gioco
-│   ├── entities.ts        # Entità del gioco (Vespa, auto, ostacoli)
-│   ├── ui.ts              # Gestione dell'interfaccia utente
-│   ├── utils.ts           # Funzioni di utilità
-│   ├── definitions.ts     # Definizioni e costanti
-│   ├── libs/
-│   │   └── persistence.ts # Gestione del salvataggio dati
-│   └── styles/
-│       └── index.css      # Stili CSS
-└── README.md
+```sh
+npm ci
+npm run dev
 ```
 
-## Tecnologie Utilizzate
+Aprire l'indirizzo indicato da Vite. Per controllare e compilare:
 
-- **Three.js** (v0.163) - Libreria 3D per il rendering
-- **TypeScript** - Linguaggio di programmazione
-- **CSS3** - Styling
-- **LocalStorage API** - Salvataggio del punteggio
+```sh
+npm run typecheck
+npm test
+npm run build
+```
 
-## Licenza
+Il build viene scritto in docs/. GitHub Pages pubblica **master:/docs**. Includere gli asset compilati nel commit della release.
 
-Questo progetto è open source.
+## Struttura
 
-## Crediti
+- src/core/: stato partita, punteggi, difficoltà, circuito, fine giro e test.
+- src/visuals/: strada curva, quartieri, persone, Vespa, materiali e traguardo.
+- src/game.ts: coordinamento simulazione, audio e controlli.
+- src/ui.ts, index.html, src/styles/: menu, HUD e riepilogo responsive.
+- [STATUS.md](STATUS.md): avanzamento e verifiche.
+- [MEMORY.md](MEMORY.md): preferenze e decisioni da conservare.
+- [ASSET_LICENSES.md](ASSET_LICENSES.md): provenienza degli asset.
 
-Sviluppato come progetto di gioco 3D interattivo.
+Three.js, TypeScript, Vite e Vitest. Record conservati localmente, nessun account richiesto. Le prove mobile emulate non sostituiscono quelle su dispositivi fisici.
