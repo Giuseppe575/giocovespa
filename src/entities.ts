@@ -1,5 +1,10 @@
 import * as THREE from "three";
+import { facadeGeometry, surfaces } from "./visuals/surfaces";
+import { seaMaterial } from "./visuals/atmosphere";
+import { enhanceCar, enhanceScooter } from "./visuals/vehicle-details";
+import { createPalm, dressCoast } from "./visuals/coast";
 import { GAME_CONFIG, Obstacle, ObstacleType, World } from "./definitions";
+import { streetLayout } from "./core/road-path";
 import {
   choice,
   createBasicMetal,
@@ -10,6 +15,78 @@ import {
 
 const logDebug = (...args: unknown[]) => {
   if (GAME_CONFIG.debug) console.log(...args);
+};
+
+const PALETTE = {
+  sky: 0x9dd9e8,
+  haze: 0xb9e1df,
+  asphalt: 0x35464a,
+  asphaltEdge: 0xe8d8b5,
+  lane: 0xfff3cf,
+  terracotta: 0xc86143,
+  coral: 0xe76f51,
+  cream: 0xf1dfbd,
+  sand: 0xd5ad78,
+  petrol: 0x176b72,
+  sage: 0x78956f,
+  shutters: 0x315e5d,
+  hazardRed: 0xe63b32,
+  hazardAmber: 0xffb000,
+  sea: 0x238ea8,
+  seaDeep: 0x176b8c,
+  beach: 0xe8c98f,
+  palmLeaf: 0x397a55,
+} as const;
+
+const sharedGeometry = {
+  laneDash: new THREE.BoxGeometry(0.09, 0.025, 1.35),
+  coinRim: new THREE.TorusGeometry(0.27, 0.055, 10, 28),
+  coinFace: new THREE.CylinderGeometry(0.225, 0.225, 0.055, 28),
+  coinInset: new THREE.CylinderGeometry(0.155, 0.155, 0.062, 24),
+  coinMark: new THREE.BoxGeometry(0.055, 0.22, 0.035),
+  beachBlock: new THREE.BoxGeometry(8.5, 0.12, 5),
+  seaBlock: new THREE.PlaneGeometry(110, 5),
+  foamBlock: new THREE.PlaneGeometry(0.38, 5),
+};
+
+const coinMaterials = {
+  rim: new THREE.MeshStandardMaterial({
+    color: 0xffd35a,
+    emissive: 0x9b5200,
+    emissiveIntensity: 0.65,
+    metalness: 0.82,
+    roughness: 0.2,
+  }),
+  face: new THREE.MeshStandardMaterial({
+    color: 0xf6a91b,
+    emissive: 0x7a3500,
+    emissiveIntensity: 0.35,
+    metalness: 0.72,
+    roughness: 0.27,
+  }),
+  inset: new THREE.MeshStandardMaterial({
+    color: 0xffe28a,
+    emissive: 0xb25d00,
+    emissiveIntensity: 0.5,
+    metalness: 0.68,
+    roughness: 0.22,
+  }),
+  mark: new THREE.MeshStandardMaterial({
+    color: 0xfff3bd,
+    emissive: 0xffa51f,
+    emissiveIntensity: 0.8,
+    metalness: 0.5,
+    roughness: 0.25,
+  }),
+};
+
+const coastMaterials = {
+  foam: new THREE.MeshStandardMaterial({
+    color: 0xe9fbf5,
+    emissive: 0xa8e3df,
+    emissiveIntensity: 0.25,
+    roughness: 0.75,
+  }),
 };
 
 export function createRenderer(): THREE.WebGLRenderer {
@@ -81,9 +158,13 @@ export function createRenderer(): THREE.WebGLRenderer {
   }
 
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, window.matchMedia("(pointer: coarse)").matches ? 1.5 : 1.75));
   renderer.shadowMap.enabled = true;
-  renderer.setClearColor(new THREE.Color(GAME_CONFIG.cityFogColor));
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.95;
+  renderer.setClearColor(new THREE.Color(PALETTE.sky));
 
   // Gestisci perdita del contesto su device vecchi o lenti
   renderer.domElement.addEventListener(
@@ -127,44 +208,20 @@ export function createCamera(): THREE.PerspectiveCamera {
     GAME_CONFIG.fov,
     window.innerWidth / window.innerHeight,
     0.1,
-    300
+    700
   );
   return camera;
 }
 
 export function createScene(): THREE.Scene {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(GAME_CONFIG.cityFogColor);
+  scene.background = new THREE.Color(PALETTE.sky);
   scene.fog = new THREE.Fog(
-    GAME_CONFIG.cityFogColor,
+    PALETTE.haze,
     GAME_CONFIG.fogNear,
     GAME_CONFIG.fogFar
   );
   return scene;
-}
-
-export function addLights(scene: THREE.Scene): void {
-  const ambient = new THREE.AmbientLight(GAME_CONFIG.ambientColor, 0.9);
-  scene.add(ambient);
-
-  const hemi = new THREE.HemisphereLight(
-    GAME_CONFIG.hemiColorSky,
-    GAME_CONFIG.hemiColorGround,
-    0.6
-  );
-  scene.add(hemi);
-
-  const dir = new THREE.DirectionalLight(GAME_CONFIG.sunColor, 1.1);
-  dir.position.set(-12, 25, 30);
-  dir.castShadow = true;
-  dir.shadow.mapSize.set(1024, 1024);
-  dir.shadow.camera.near = 5;
-  dir.shadow.camera.far = 80;
-  dir.shadow.camera.left = -40;
-  dir.shadow.camera.right = 40;
-  dir.shadow.camera.top = 40;
-  dir.shadow.camera.bottom = -40;
-  scene.add(dir);
 }
 
 /**
@@ -175,8 +232,8 @@ export function createVespaWithRider(): THREE.Group {
   const group = new THREE.Group();
 
   // Body
-  const bodyMat = createBasicMetal(0x1f7cff);
-  const floorMat = createBasicMetal(0x111111);
+  const bodyMat = createBasicMetal(PALETTE.coral);
+  const floorMat = createBasicMetal(0x26383a);
 
   const chassis = new THREE.Mesh(
     new THREE.BoxGeometry(0.6, 0.25, 1.3),
@@ -205,9 +262,10 @@ export function createVespaWithRider(): THREE.Group {
   group.add(floor);
 
   const rearSide = new THREE.Mesh(
-    new THREE.BoxGeometry(0.65, 0.55, 0.7),
+    new THREE.SphereGeometry(1, 28, 20),
     bodyMat
   );
+  rearSide.scale.set(0.34, 0.29, 0.42);
   rearSide.position.set(0, 0.8, 0.5);
   rearSide.castShadow = true;
   group.add(rearSide);
@@ -264,30 +322,36 @@ export function createVespaWithRider(): THREE.Group {
 
   // Rider (stylized human)
   const skin = createSoftBody(0xf4c9a5);
-  const shirt = createSoftBody(0x202439);
-  const pants = createSoftBody(0x19191c);
-  const helmetMat = createSoftBody(0xffffff);
+  const shirt = createSoftBody(PALETTE.petrol);
+  const pants = createSoftBody(0x26383a);
+  const helmetMat = new THREE.MeshStandardMaterial({color:0xece7d9,roughness:.28,metalness:.15});
 
   // Legs
-  const legGeom = new THREE.BoxGeometry(0.13, 0.45, 0.13);
+  const legGeom = new THREE.CapsuleGeometry(0.065, 0.27, 4, 10);
   const leftLeg = new THREE.Mesh(legGeom, pants);
   leftLeg.position.set(-0.09, 0.8, 0.15);
+  leftLeg.rotation.x = -.45;
   const rightLeg = leftLeg.clone();
   rightLeg.position.x = 0.09;
 
   // Torso
   const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.32, 0.42, 0.2),
+    new THREE.CapsuleGeometry(0.155, 0.2, 6, 12),
     shirt
   );
   torso.position.set(0, 1.25, 0.1);
+  torso.scale.z = .7;
+  torso.rotation.x = -.15;
 
   // Arms
-  const armGeom = new THREE.BoxGeometry(0.11, 0.35, 0.11);
+  const armGeom = new THREE.CapsuleGeometry(0.055, 0.28, 4, 10);
   const leftArm = new THREE.Mesh(armGeom, shirt);
   leftArm.position.set(-0.26, 1.3, -0.2);
+  leftArm.rotation.x = -.9;
+  leftArm.rotation.z = -.2;
   const rightArm = leftArm.clone();
   rightArm.position.x = 0.26;
+  rightArm.rotation.z = .2;
 
   // Head + helmet
   const head = new THREE.Mesh(
@@ -323,21 +387,21 @@ export function createVespaWithRider(): THREE.Group {
     }
   });
 
+  enhanceScooter(group);
   return group;
 }
 
 export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
   const segments: THREE.Mesh[] = [];
-  const material = new THREE.MeshStandardMaterial({
-    color: 0x3a3f45,
-    roughness: 0.85,
-    metalness: 0.04,
-  });
+  const material = surfaces().asphalt;
+  const lineMat = new THREE.MeshStandardMaterial({ color: PALETTE.lane, roughness: 0.82 });
+  const curbLightMat = surfaces().stone;
+  const walkMat = surfaces().pavement;
 
   const width = GAME_CONFIG.laneWidth * GAME_CONFIG.lanes + 3;
 
   for (
-    let z = -GAME_CONFIG.roadSegmentLength * 2;
+    let z = 0;
     z > -GAME_CONFIG.roadLength;
     z -= GAME_CONFIG.roadSegmentLength
   ) {
@@ -350,52 +414,42 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
     mesh.position.set(0, 0, z);
     mesh.userData.baseX = 0;
     mesh.receiveShadow = true;
+
+    // Markings and pavements follow the recycled road tile as children.
+    const dashStep = 2.45;
+    const dashesPerLane = Math.ceil(GAME_CONFIG.roadSegmentLength / dashStep);
+    for (let lane = 1; lane < GAME_CONFIG.lanes; lane++) {
+      const x = (lane - GAME_CONFIG.lanes / 2) * GAME_CONFIG.laneWidth;
+      const dashes = new THREE.InstancedMesh(sharedGeometry.laneDash, lineMat, dashesPerLane);
+      const matrix = new THREE.Matrix4();
+      for (let i = 0; i < dashesPerLane; i++) {
+        matrix.makeTranslation(x, 0.085, -GAME_CONFIG.roadSegmentLength / 2 + i * dashStep + 0.8);
+        dashes.setMatrixAt(i, matrix);
+      }
+      dashes.instanceMatrix.needsUpdate = true;
+      dashes.frustumCulled = false;
+      mesh.add(dashes);
+    }
+
+    for (const side of [-1, 1]) {
+      const pavement = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.28, GAME_CONFIG.roadSegmentLength),
+        walkMat
+      );
+      pavement.position.set(side * (width / 2 + 0.9), 0.16, 0);
+      pavement.receiveShadow = true;
+      mesh.add(pavement);
+
+      const curb = new THREE.Mesh(
+        new THREE.BoxGeometry(0.22, 0.16, GAME_CONFIG.roadSegmentLength),
+        curbLightMat
+      );
+      curb.position.set(side * (width / 2 + 0.11), 0.13, 0);
+      curb.receiveShadow = true;
+      mesh.add(curb);
+    }
     scene.add(mesh);
     segments.push(mesh);
-  }
-
-  // lane lines
-  const lineMat = new THREE.MeshStandardMaterial({
-    color: 0xf8f8f8,
-    roughness: 0.7,
-  });
-  const dashLength = 1.2;
-  const dashGap = 1;
-  const laneCount = GAME_CONFIG.lanes;
-  const laneWidth = GAME_CONFIG.laneWidth;
-
-  for (let lane = 1; lane < laneCount; lane++) {
-    const x = (lane - laneCount / 2) * laneWidth;
-    for (let i = 0; i < 120; i++) {
-      const geom = new THREE.BoxGeometry(0.08, 0.02, dashLength);
-      const mesh = new THREE.Mesh(geom, lineMat);
-      mesh.position.set(x, 0.07, -i * (dashLength + dashGap));
-      mesh.userData.baseX = x;
-      mesh.receiveShadow = false;
-      mesh.castShadow = false;
-      scene.add(mesh);
-      segments.push(mesh);
-    }
-  }
-
-  // Side sidewalks
-  const sideMat = new THREE.MeshStandardMaterial({
-    color: 0xced4da,
-    roughness: 0.85,
-  });
-
-  for (let i = 0; i < 40; i++) {
-    const geom = new THREE.BoxGeometry(2, 0.3, 5);
-    const left = new THREE.Mesh(geom, sideMat);
-    const right = new THREE.Mesh(geom, sideMat);
-    left.position.set(-width / 2 - 1, 0.15, -i * 5);
-    right.position.set(width / 2 + 1, 0.15, -i * 5);
-    left.userData.baseX = left.position.x;
-    right.userData.baseX = right.position.x;
-    left.receiveShadow = true;
-    right.receiveShadow = true;
-    scene.add(left, right);
-    segments.push(left, right);
   }
 
   return segments;
@@ -404,101 +458,104 @@ export function createRoad(scene: THREE.Scene): THREE.Mesh[] {
 /**
  * Create simple futuristic / Italian city-style buildings.
  */
-function addFacadeWindows(parent: THREE.Group, width: number, height: number, depth: number, side: number, windowMat: THREE.Material) {
-  const cols = Math.max(2, Math.floor(width / 0.9));
-  const rows = Math.max(3, Math.floor(height / 0.9));
-  const zMin = -depth / 2 + 0.35;
-  const zMax = depth / 2 - 0.35;
-  const x = side > 0 ? -(width / 2 - 0.05) : width / 2 - 0.05;
-  for (let r = 0; r < rows; r++) {
-    const y = 0.8 + r * (height / rows);
-    for (let c = 0; c < cols; c++) {
-      const z = zMin + c * ((zMax - zMin) / Math.max(1, cols - 1));
-      if (Math.random() < 0.12) continue; // piccoli vuoti casuali
-      const win = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.36, 0.04), windowMat);
-      win.position.set(x, y, z);
-      win.castShadow = false;
-      win.receiveShadow = false;
-      parent.add(win);
-    }
-  }
-}
-
-function createBuildingForSide(side: number, worldWidth: number): THREE.Group {
-  const style = choice<"brick" | "concrete" | "glass" | "mixed">(["brick", "concrete", "glass", "mixed"]);
+function createBuildingForSide(side: number, _worldWidth: number): THREE.Group {
+  const style = choice<"terracotta" | "cream" | "petrol" | "sand">([
+    "terracotta", "terracotta", "cream", "cream", "petrol", "sand",
+  ]);
   const group = new THREE.Group();
 
-  const params = {
-    brick: {
-      color: 0x8b4a3a,
-      roughness: 0.9,
-      metalness: 0.25,
-      winColor: 0xa9c7df,
-      winEmissive: 0x183247,
-    },
-    concrete: {
-      color: 0xb7b9bd,
-      roughness: 0.82,
-      metalness: 0.15,
-      winColor: 0x9cb6c8,
-      winEmissive: 0x1f2e3a,
-    },
-    glass: {
-      color: 0x6e869a,
-      roughness: 0.4,
-      metalness: 0.35,
-      winColor: 0xa7c5dd,
-      winEmissive: 0x2a3e54,
-    },
-    mixed: {
-      color: 0xc4c4c4,
-      roughness: 0.78,
-      metalness: 0.2,
-      winColor: 0xa7c5dd,
-      winEmissive: 0x2a3e54,
-    },
-  }[style];
-
-  const w = randRange(2.8, style === "glass" ? 6.2 : 4.8);
-  const h = randRange(style === "glass" ? 8 : 5, style === "glass" ? 15 : 11);
+  const w = randRange(3.2, 5.4);
+  const h = choice([6, 6, 9, 9, 12]);
   const d = randRange(2.4, 4.8);
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({
-      color: params.color,
-      metalness: params.metalness,
-      roughness: params.roughness,
-    })
+    facadeGeometry(w, h, d),
+    surfaces().facades[["terracotta", "cream", "petrol", "sand"].indexOf(style)]
   );
   body.position.y = h / 2;
   body.castShadow = true;
   body.receiveShadow = true;
   group.add(body);
 
-  // Facciata lato strada
-  const windowMat = new THREE.MeshStandardMaterial({
-    color: params.winColor,
-    emissive: params.winEmissive,
-    emissiveIntensity: 0.15,
-    metalness: 0.1,
-    roughness: 0.35,
-  });
-  addFacadeWindows(group, w, h, d, side, windowMat);
+  // Deep stone balconies catch the sun; the facade texture carries window detail.
+  if (Math.random() > 0.45) {
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: style === "petrol" ? PALETTE.cream : PALETTE.shutters,
+      roughness: 0.9,
+    });
+    const balcony = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.12, d * 0.62), surfaces().stone);
+    balcony.position.set(-side * (w / 2 + 0.2), 3.04, 0);
+    balcony.castShadow = true;
+    group.add(balcony);
+    const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(.04,.62,.04), accentMat, 8);
+    const matrix = new THREE.Matrix4();
+    for(let i=0;i<8;i++) rails.setMatrixAt(i,matrix.makeTranslation(-side*(w/2+.49),3.4,(i/7-.5)*d*.62));
+    const railTop = new THREE.Mesh(new THREE.BoxGeometry(.045,.045,d*.65),surfaces().iron);
+    railTop.position.set(-side*(w/2+.49),3.73,0);
+    group.add(rails,railTop);
+  }
 
   // Bordo cornice superiore per dare piu "massa"
   const crown = new THREE.Mesh(
     new THREE.BoxGeometry(w + 0.2, 0.25, d + 0.2),
-    new THREE.MeshStandardMaterial({
-      color: params.color,
-      metalness: params.metalness * 0.6,
-      roughness: Math.min(1, params.roughness + 0.05),
-    })
+    surfaces().stone
   );
   crown.position.set(0, h + 0.12, 0);
   crown.castShadow = true;
   group.add(crown);
 
+  if (Math.random() > 0.72) {
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(Math.max(w, d) * 0.62, 0.9, 4),
+      surfaces().roof
+    );
+    roof.rotation.y = Math.PI / 4;
+    roof.position.y = h + 0.65;
+    roof.scale.z = d / w;
+    roof.castShadow = true;
+    group.add(roof);
+  }
+
+  return group;
+}
+
+/** A lightweight, recyclable slice of the seaside district. */
+function createCoastalBlock(side: number, blockIndex: number): THREE.Group {
+  const group = new THREE.Group();
+
+  const beach = new THREE.Mesh(
+    sharedGeometry.beachBlock,
+    surfaces().sand
+  );
+  beach.position.set(side * 1.15, 0.01, 0);
+  beach.receiveShadow = true;
+
+  const sea = new THREE.Mesh(
+    sharedGeometry.seaBlock,
+    seaMaterial()
+  );
+  sea.rotation.x = -Math.PI / 2;
+  sea.position.set(side * 60.35, 0.015, 0);
+  sea.receiveShadow = false;
+
+  // A narrow bright band makes the shoreline readable even through the fog.
+  const foam = new THREE.Mesh(
+    sharedGeometry.foamBlock,
+    coastMaterials.foam
+  );
+  foam.rotation.x = -Math.PI / 2;
+  foam.position.set(side * 5.35, 0.02, 0);
+
+  group.add(beach, sea, foam);
+
+  // Alternate palms between blocks to keep the district lively but inexpensive.
+  if (blockIndex % 2 === 0) {
+    const palm = createPalm();
+    palm.position.set(side * 0.5, 0.1, randRange(-1.4, 1.4));
+    palm.rotation.y = randRange(-0.35, 0.35);
+    group.add(palm);
+  }
+  dressCoast(group, blockIndex);
   return group;
 }
 
@@ -507,20 +564,17 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
 
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < 40; i++) {
-      const b = createBuildingForSide(side, worldWidth);
+      // A long uninterrupted stretch on the right opens onto the sea.
+      const isCoastalDistrict = side === 1 && i >= 3 && i <= 27;
+      const b = isCoastalDistrict
+        ? createCoastalBlock(side, i)
+        : createBuildingForSide(side, worldWidth);
       b.position.set(
-        side * (worldWidth / 2 + 3 + randRange(0, 2)),
+        side * (worldWidth / 2 + 3 + (isCoastalDistrict ? 0 : randRange(0, 2))),
         0,
-        -i * 5 - randRange(0, 5)
+        -i * 5 - (isCoastalDistrict ? 0 : randRange(0, 5))
       );
       b.userData.baseX = b.position.x;
-
-      b.traverse((obj) => {
-        if ((obj as THREE.Mesh).isMesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
 
       scene.add(b);
       buildings.push(b);
@@ -532,13 +586,13 @@ export function createBuildings(scene: THREE.Scene, worldWidth: number) {
 
 export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
   const lights: THREE.Group[] = [];
-  const count = 40;
+  const count = 20;
   for (let i = 0; i < count; i++) {
-    const z = -i * 10 - 5;
+    const z = -i * 20 - 5;
     for (const side of [-1, 1]) {
       const pole = new THREE.Group();
-      const poleMat = createBasicMetal(0x7b838d);
-      const lampMat = createEmissiveMaterial(0xfff2d1, 0.4);
+      const poleMat = createBasicMetal(PALETTE.petrol);
+      const lampMat = createEmissiveMaterial(0xffdf9a, 1.25);
 
       const base = new THREE.Mesh(
         new THREE.CylinderGeometry(0.08, 0.12, 0.4, 8),
@@ -576,14 +630,6 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
       pole.position.set(lightX, 0, z);
       pole.userData.baseX = pole.position.x;
 
-      const l = new THREE.PointLight(0xfff2d1, 0.2, 18, 1.4);
-      l.position.set(
-        lamp.position.x,
-        lamp.position.y - 0.08,
-        lamp.position.z
-      );
-      pole.add(l);
-
       scene.add(pole);
       lights.push(pole);
     }
@@ -596,7 +642,7 @@ export function createStreetLights(scene: THREE.Scene, worldWidth: number) {
  */
 function createCar(): THREE.Group {
   const car = new THREE.Group();
-  const bodyColor = Math.random() > 0.5 ? 0xff5733 : 0x1abc9c;
+  const bodyColor = choice([PALETTE.coral, PALETTE.petrol, PALETTE.cream, PALETTE.sage]);
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(1.2, 0.35, 2),
     createSoftBody(bodyColor)
@@ -607,7 +653,7 @@ function createCar(): THREE.Group {
 
   const cabin = new THREE.Mesh(
     new THREE.BoxGeometry(0.9, 0.4, 0.8),
-    createSoftBody(0x111111)
+    createSoftBody(0x26383a)
   );
   cabin.position.set(0, 0.75, -0.1);
   cabin.castShadow = true;
@@ -621,13 +667,22 @@ function createCar(): THREE.Group {
     [-0.5, 0.22, 0.8],
     [0.5, 0.22, 0.8],
   ];
+  const wheels: THREE.Mesh[] = [];
   wheelPositions.forEach(([x, y, z]) => {
     const w = new THREE.Mesh(wheelGeom, wheelMat);
     w.rotation.z = Math.PI / 2;
     w.position.set(x, y, z);
     w.castShadow = true;
+    w.name = "traffic-car-wheel";
+    wheels.push(w);
     car.add(w);
   });
+
+  // Runtime animation data stays on the visual object so the public obstacle
+  // model and its collision contract remain unchanged.
+  car.userData.wheels = wheels;
+  car.userData.trafficCruiseSpeed = 8 + Math.random() * 5;
+  car.userData.motionPhase = Math.random() * Math.PI * 2;
 
   const headLights = new THREE.Mesh(
     new THREE.BoxGeometry(0.18, 0.08, 0.04),
@@ -638,8 +693,19 @@ function createCar(): THREE.Group {
   const headLightsLeft = headLights.clone();
   headLightsLeft.position.set(-0.32, 0.4, -1.02);
 
-  car.add(headLights, headLightsLeft);
+  // Red rear lights are the side the player reads while approaching and
+  // overtaking, so they provide a much stronger motion/depth cue.
+  const tailLightMaterial = createEmissiveMaterial(0xf04438, 1.35);
+  const tailLightRight = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.1, 0.045),
+    tailLightMaterial
+  );
+  tailLightRight.position.set(0.36, 0.42, 1.02);
+  const tailLightLeft = tailLightRight.clone();
+  tailLightLeft.position.x = -0.36;
 
+  car.add(headLights, headLightsLeft, tailLightRight, tailLightLeft);
+  enhanceCar(car);
   return car;
 }
 
@@ -647,19 +713,26 @@ function createBarrier(): THREE.Group {
   const group = new THREE.Group();
   const base = new THREE.Mesh(
     new THREE.BoxGeometry(1.6, 0.5, 0.4),
-    createSoftBody(0xd0d3d8)
+    createSoftBody(PALETTE.cream)
   );
   base.castShadow = true;
   base.receiveShadow = true;
 
   const stripes = new THREE.Mesh(
     new THREE.BoxGeometry(1.6, 0.22, 0.42),
-    createSoftBody(0xff4f4f)
+    createEmissiveMaterial(PALETTE.hazardRed, 0.45)
   );
   stripes.position.y = 0.16;
   stripes.castShadow = true;
 
-  group.add(base, stripes);
+  const beaconMat = createEmissiveMaterial(PALETTE.hazardAmber, 1.2);
+  const beaconGeometry = new THREE.SphereGeometry(0.09, 8, 6);
+  const leftBeacon = new THREE.Mesh(beaconGeometry, beaconMat);
+  leftBeacon.position.set(-0.62, 0.38, 0);
+  const rightBeacon = leftBeacon.clone();
+  rightBeacon.position.x = 0.62;
+
+  group.add(base, stripes, leftBeacon, rightBeacon);
   return group;
 }
 
@@ -667,23 +740,28 @@ function createCone(): THREE.Group {
   const group = new THREE.Group();
   const base = new THREE.Mesh(
     new THREE.CylinderGeometry(0.12, 0.18, 0.06, 16),
-    createSoftBody(0xffffff)
+    createSoftBody(PALETTE.cream)
   );
   base.position.y = 0.03;
   const cone = new THREE.Mesh(
     new THREE.ConeGeometry(0.16, 0.42, 16),
-    createSoftBody(0xff7a1b)
+    createEmissiveMaterial(PALETTE.hazardAmber, 0.25)
   );
   cone.position.y = 0.27;
   cone.castShadow = true;
   base.castShadow = true;
-  group.add(base, cone);
+  const collar = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.15, 0.08, 12),
+    createSoftBody(PALETTE.cream)
+  );
+  collar.position.y = 0.25;
+  group.add(base, cone, collar);
   return group;
 }
 
 function createRamp(): THREE.Group {
   const group = new THREE.Group();
-  const mat = createSoftBody(0x8c939d);
+  const mat = createSoftBody(PALETTE.petrol);
   const base = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 2.5), mat);
   base.position.y = 0.09;
   base.castShadow = true;
@@ -694,19 +772,36 @@ function createRamp(): THREE.Group {
   slope.rotation.x = -Math.PI / 10;
   slope.castShadow = true;
 
-  group.add(base, slope);
+  const arrow = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.035, 0.35),
+    createEmissiveMaterial(PALETTE.lane, 0.65)
+  );
+  arrow.position.set(0, 0.51, -0.45);
+  arrow.rotation.x = slope.rotation.x;
+
+  group.add(base, slope, arrow);
   return group;
 }
 
 function createCoin(): THREE.Group {
   const group = new THREE.Group();
-  const coin = new THREE.Mesh(
-    new THREE.TorusGeometry(0.26, 0.09, 12, 20),
-    createEmissiveMaterial(0xffd85a, 1.1)
-  );
-  coin.rotation.x = Math.PI / 2;
-  coin.castShadow = false;
-  group.add(coin);
+
+  const rim = new THREE.Mesh(sharedGeometry.coinRim, coinMaterials.rim);
+  const face = new THREE.Mesh(sharedGeometry.coinFace, coinMaterials.face);
+  const inset = new THREE.Mesh(sharedGeometry.coinInset, coinMaterials.inset);
+  face.rotation.x = Math.PI / 2;
+  inset.rotation.x = Math.PI / 2;
+  inset.position.z = 0.035;
+
+  // A simple raised Vespa-style "V" remains clear at gameplay scale.
+  const markLeft = new THREE.Mesh(sharedGeometry.coinMark, coinMaterials.mark);
+  markLeft.position.set(-0.052, 0.01, 0.075);
+  markLeft.rotation.z = -0.43;
+  const markRight = markLeft.clone();
+  markRight.position.x = 0.052;
+  markRight.rotation.z = 0.43;
+
+  group.add(face, rim, inset, markLeft, markRight);
   return group;
 }
 
@@ -716,6 +811,7 @@ function pickLaneIndex(
   checkDistance: number,
   avoidLanes: Set<number> = new Set()
 ): number {
+  const allowedLanes = streetLayout(world.trackDistance - 5 - zSpawn).lanes;
   const laneOccupancy = new Map<number, number>();
   for (let i = 0; i < GAME_CONFIG.lanes; i++) {
     laneOccupancy.set(i, 0);
@@ -723,8 +819,8 @@ function pickLaneIndex(
 
   for (const obstacle of world.obstacles) {
     if (obstacle.type === "COIN") continue;
-    const obstacleZ = obstacle.mesh.position.z;
-    if (obstacleZ < zSpawn && obstacleZ > zSpawn - checkDistance) {
+    const obstacleZ = obstacle.mesh.userData.trackZ ?? obstacle.mesh.position.z;
+    if (Math.abs(obstacleZ - zSpawn) < checkDistance) {
       const lane = obstacle.laneIndex;
       laneOccupancy.set(lane, (laneOccupancy.get(lane) || 0) + 1);
     }
@@ -732,6 +828,7 @@ function pickLaneIndex(
 
   const freeLanes: number[] = [];
   for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (!allowedLanes.includes(i)) continue;
     if (laneOccupancy.get(i) === 0 && !avoidLanes.has(i)) {
       freeLanes.push(i);
     }
@@ -744,6 +841,7 @@ function pickLaneIndex(
   let minOccupancy = Infinity;
   let laneIndex = 0;
   for (let i = 0; i < GAME_CONFIG.lanes; i++) {
+    if (!allowedLanes.includes(i)) continue;
     if (avoidLanes.has(i)) continue;
     const occupancy = laneOccupancy.get(i) || 0;
     if (occupancy < minOccupancy) {
@@ -787,6 +885,7 @@ export function spawnObstacle(world: World, zSpawn: number, lastSpawnedLanes: nu
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0, zSpawn);
+  mesh.userData.trackZ = zSpawn;
   mesh.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = true;
@@ -825,6 +924,7 @@ export function spawnRamp(world: World, zSpawn: number, lastSpawnedLanes: number
     (laneIndex - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0, zSpawn);
+  mesh.userData.trackZ = zSpawn;
   mesh.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = true;
@@ -859,6 +959,7 @@ export function spawnCoin(world: World, zSpawn: number, laneIndex?: number): Obs
     (lane - (GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth;
 
   mesh.position.set(laneOffset, 0.6, zSpawn);
+  mesh.userData.trackZ = zSpawn;
   mesh.traverse((obj) => {
     if ((obj as THREE.Mesh).isMesh) {
       obj.castShadow = false;

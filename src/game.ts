@@ -1,4 +1,12 @@
 import * as THREE from "three";
+import { setupAtmosphere, updateAtmosphere } from "./visuals/atmosphere";
+import { setEngineGate } from "./core/engine-gate";
+import { RaceProgress, RACE_DISTANCE, BEST_LAP_KEY, parseBestLap } from "./core/race";
+import { projectRoadPoint, sampleRoad, streetLayout } from "./core/road-path";
+import { resolveCircuitPosition } from "./core/circuit";
+import { CircuitRenderer } from "./visuals/circuit-renderer";
+import { enhancePlayerModel } from "./visuals/player-model";
+import { SCOOTER_COLORS, setScooterColor, type ScooterColor } from "./visuals/classic-scooter";
 import {
   AudioSystem,
   GAME_CONFIG,
@@ -17,12 +25,9 @@ import {
   shakeValue,
 } from "./utils";
 import {
-  createBuildings,
   createCamera,
   createRenderer,
-  createRoad,
   createScene,
-  createStreetLights,
   createVespaWithRider,
   spawnObstacle,
   spawnRamp,
@@ -41,13 +46,19 @@ import {
   updateHUD,
 } from "./ui";
 import { persistence } from "./libs/persistence";
+import { createRunModel, GameStateMachine, getDifficultyProfile } from "./core";
+import type { RunSnapshot } from "./core";
 
 const logDebug = (...args: unknown[]) => {
   if (GAME_CONFIG.debug) console.log(...args);
 };
 
 let world: World;
-let gameState: GameState = "MENU";
+const gameStateMachine = new GameStateMachine();
+let gameState: GameState = gameStateMachine.state;
+gameStateMachine.subscribe(({ to }) => {
+  gameState = to;
+});
 let input: InputState = {
   left: false,
   right: false,
@@ -56,26 +67,45 @@ let input: InputState = {
   turbo: false,
 };
 let scoreSystem: ScoreSystem = {
+  elapsedSeconds: 0,
+  lapCompleted: false,
+  bestLapSeconds: null,
+  newBestLap: false,
   score: 0,
   highScore: 0,
   distance: 0,
   coins: 0,
+  nearMisses: 0,
   combo: 1,
+  bestCombo: 1,
+  missionCompleted: false,
   lastComboTime: 0,
 };
+const runModel = createRunModel(
+  { id: "lungomare-750", targetDistance: 750 },
+  {
+    distanceScoreFactor: 0.7,
+    coinValue: GAME_CONFIG.coinValue,
+    nearMissValue: 75,
+    comboStep: 0.15,
+    maxCombo: 6,
+    comboWindowSeconds: GAME_CONFIG.comboTimeout,
+  }
+);
 let audio: AudioSystem = {
   context: null,
   muted: false,
   engineNode: null,
   engineOvertone: null,
   engineGain: null,
+  engineOutputGain: null,
   engineFilter: null,
   lastWhooshTime: 0,
 };
 
-let lastSpawnZ = -25;
-let lastCoinSpawnZ = -25;
-let lastRampSpawnZ = -25;
+let hazardSpawnDistanceLeft = 0;
+let coinSpawnDistanceLeft = 0;
+let rampSpawnDistanceLeft = 0;
 let lastSpawnedLanes: number[] = [];
 let lastTime = now();
 let turboTimeLeft = 0;
@@ -86,32 +116,98 @@ let startGraceTime = 0;
 let hudUpdateTimer = 0;
 const HUD_UPDATE_INTERVAL = 1 / 20;
 let curveDistance = 0;
+const race = new RaceProgress();
+let resultTimer: ReturnType<typeof setTimeout> | undefined;
+let circuitRenderer: CircuitRenderer;
+let districtId = "";
 let audioInitPromise: Promise<void> | null = null;
+let documentPaused = document.hidden;
+let engineAudible = false;
+function silenceEngine() {
+  if (audio.context && audio.engineOutputGain) {
+    setEngineGate(audio.engineOutputGain.gain, audio.context.currentTime, false);
+  }
+  engineAudible = false;
+}
 const cameraBaseOffset = new THREE.Vector3();
 const cameraTargetPos = new THREE.Vector3();
 const cameraLookAt = new THREE.Vector3();
 
-function getCurveOffset(): number {
-  const straightLen = GAME_CONFIG.curveStraightLength;
-  const curveLen = GAME_CONFIG.curveLength;
-  const cycleLen = straightLen + curveLen + straightLen;
-  const progress = curveDistance * GAME_CONFIG.curveSpeed;
-  const local = progress % cycleLen;
-  if (local < straightLen) return 0;
-  if (local >= straightLen + curveLen) return 0;
-  const curveT = (local - straightLen) / curveLen;
-  const direction = Math.floor(progress / cycleLen) % 2 === 0 ? 1 : -1;
-  return Math.sin(curveT * Math.PI) * GAME_CONFIG.curveAmplitude * direction;
-}
-
-function applyCurveToObject(obj: THREE.Object3D, factor = 1) {
-  const baseX = typeof obj.userData.baseX === "number" ? obj.userData.baseX : obj.position.x;
-  obj.userData.baseX = baseX;
-  obj.position.x = baseX + getCurveOffset() * factor;
+function trackZ(obstacle: World["obstacles"][number]) {
+  return obstacle.mesh.userData.trackZ as number;
 }
 
 function isHazard(type: string) {
   return type === "CAR" || type === "BARRIER" || type === "CONE";
+}
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min);
+}
+
+const TRAFFIC_WHEEL_RADIUS = 0.22;
+
+/**
+ * Cars are road users, not parked props: they keep travelling forward while
+ * the player's faster Vespa gains on them. The effective speed is capped from
+ * the current player speed so an overtake always remains readable, even when
+ * the player brakes. Visual suspension is deliberately tiny and never moves
+ * the collision centre or changes lane.
+ */
+function updateTrafficCar(car: THREE.Group, playerSpeed: number, dt: number): number {
+  const preferredSpeed =
+    typeof car.userData.trafficCruiseSpeed === "number"
+      ? car.userData.trafficCruiseSpeed
+      : 10;
+  const trafficSpeed = Math.min(preferredSpeed, Math.max(2.5, playerSpeed * 0.72));
+  const phase =
+    (typeof car.userData.motionPhase === "number" ? car.userData.motionPhase : 0) +
+    dt * (3.2 + trafficSpeed * 0.08);
+  car.userData.motionPhase = phase;
+
+  const wheelSpin = (trafficSpeed / TRAFFIC_WHEEL_RADIUS) * dt;
+  const wheels = car.userData.wheels as THREE.Object3D[] | undefined;
+  wheels?.forEach((wheel) => {
+    // Cylinder axle is its local Y axis before the 90 degree alignment.
+    wheel.rotateY(wheelSpin);
+  });
+
+  car.position.y = Math.sin(phase * 2) * 0.012;
+  car.rotation.x = Math.sin(phase) * 0.007;
+  car.rotation.z = Math.sin(phase * 0.7) * 0.012;
+  return trafficSpeed;
+}
+
+function occupiedHazardLanesAt(z: number, segmentLength = 16): Set<number> {
+  const lanes = new Set<number>();
+  for (const obstacle of world.obstacles) {
+    if (isHazard(obstacle.type) && Math.abs(trackZ(obstacle) - z) <= segmentLength / 2) {
+      lanes.add(obstacle.laneIndex);
+    }
+  }
+  return lanes;
+}
+
+function pickReadableCoinLane(z: number): number {
+  const blocked = occupiedHazardLanesAt(z, 20);
+  const openLanes: number[] = [];
+  const allowedLanes = streetLayout(curveDistance - 5 - z).lanes;
+  for (const lane of allowedLanes) {
+    if (!blocked.has(lane)) openLanes.push(lane);
+  }
+  const candidates = openLanes.length > 0 ? openLanes : allowedLanes;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function syncRunSnapshot(snapshot: RunSnapshot) {
+  scoreSystem.score = snapshot.score;
+  scoreSystem.distance = snapshot.distance;
+  scoreSystem.coins = snapshot.coins;
+  scoreSystem.nearMisses = snapshot.nearMisses;
+  scoreSystem.combo = snapshot.combo;
+  scoreSystem.bestCombo = snapshot.maxCombo;
+  scoreSystem.missionCompleted = snapshot.mission?.completed ?? false;
+  scoreSystem.lastComboTime = now();
 }
 
 async function initAudio() {
@@ -168,7 +264,10 @@ async function initAudio() {
   lfo.connect(lfoGain).connect(mix.gain);
   mainOsc.connect(mix);
   overtone.connect(mix);
-  mix.connect(filter).connect(ctx.destination);
+  const output = ctx.createGain();
+  output.gain.value = 0;
+  mix.connect(filter).connect(output).connect(ctx.destination);
+  audio.engineOutputGain = output;
 
   mainOsc.start();
   overtone.start();
@@ -216,9 +315,13 @@ function updateEngineSound(speed: number) {
     !audio.engineFilter
   )
     return;
-  if (audio.muted) {
-    audio.engineGain.gain.value = 0;
+  if (audio.muted || gameState !== "RUNNING" || documentPaused) {
+    silenceEngine();
     return;
+  }
+  if (audio.engineOutputGain && !engineAudible) {
+    setEngineGate(audio.engineOutputGain.gain, audio.context.currentTime, true);
+    engineAudible = true;
   }
   const norm = clamp((speed - GAME_CONFIG.minSpeed) / (GAME_CONFIG.maxSpeed - GAME_CONFIG.minSpeed), 0, 1);
   const freq = 120 + norm * 240;
@@ -294,6 +397,21 @@ export async function initGame() {
 
   const cityFogColor = new THREE.Color(GAME_CONFIG.cityFogColor);
   const playerMesh = createVespaWithRider();
+  await enhancePlayerModel(playerMesh);
+  let selectedColor: ScooterColor = "red";
+  try {
+    const stored = localStorage.getItem("vespa_body_color");
+    if (stored && stored in SCOOTER_COLORS) selectedColor = stored as ScooterColor;
+  } catch { /* Private browsing may disable persistence. */ }
+  setScooterColor(playerMesh, selectedColor);
+  document.querySelectorAll<HTMLInputElement>('input[name="scooter-color"]').forEach(radio => {
+    radio.checked = radio.value === selectedColor;
+    radio.addEventListener("change", () => {
+      if (!(radio.value in SCOOTER_COLORS)) return;
+      setScooterColor(playerMesh, radio.value as ScooterColor);
+      try { localStorage.setItem("vespa_body_color", radio.value); } catch { /* Keep selection for this session. */ }
+    });
+  });
 
   const player: PlayerData = {
     mesh: playerMesh,
@@ -312,15 +430,16 @@ export async function initGame() {
 
   scene.add(player.mesh);
 
-  const roadSegments = createRoad(scene);
-  const worldWidth = GAME_CONFIG.laneWidth * GAME_CONFIG.lanes + 3;
-  const buildings = createBuildings(scene, worldWidth);
-  const streetLights = createStreetLights(scene, worldWidth);
-  addLights(scene);
+  const roadSegments: THREE.Mesh[] = [];
+  const buildings: THREE.Group[] = [];
+  const streetLights: THREE.Group[] = [];
+  circuitRenderer = new CircuitRenderer(scene);
+  setupAtmosphere(scene, renderer);
 
   const vehiclesPool: THREE.Group[] = [];
 
   world = {
+    trackDistance: 0,
     scene,
     camera,
     renderer,
@@ -352,15 +471,24 @@ export async function initGame() {
   // Setup button handlers (solo mute - play/restart gestiti in main.ts)
   const ui = getUI();
   if (ui) {
-    ui.muteBtn.textContent = audio.muted ? "??" : "??";
+    document.getElementById("menu-return-btn")?.addEventListener("click", () => {
+      if (gameState === "RUNNING") return;
+      clearTimeout(resultTimer);
+      gameStateMachine.dispatch("RETURN_TO_MENU");
+      resetGameState();
+      showMenu();
+    });
+    ui.muteBtn.setAttribute("aria-pressed", audio.muted ? "true" : "false");
+    ui.muteBtn.setAttribute("aria-label", audio.muted ? "Attiva audio" : "Disattiva audio");
     ui.muteBtn.onclick = async () => {
       audio.muted = !audio.muted;
-      ui.muteBtn.textContent = audio.muted ? "??" : "??";
+      ui.muteBtn.setAttribute("aria-pressed", audio.muted ? "true" : "false");
+      ui.muteBtn.setAttribute("aria-label", audio.muted ? "Attiva audio" : "Disattiva audio");
       if (!audio.muted && !audio.context) {
         await ensureAudioReady();
       }
       if (audio.muted) {
-        if (audio.engineGain) audio.engineGain.gain.value = 0;
+        silenceEngine();
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
       } else {
         await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0");
@@ -380,6 +508,14 @@ export async function initGame() {
   showMenu();
 
   window.addEventListener("resize", onResize);
+  document.addEventListener("visibilitychange", () => {
+    documentPaused = document.hidden;
+    if (documentPaused) { silenceEngine(); clearInput(); }
+    lastTime = now();
+    if (!documentPaused && gameState === "RUNNING") {
+      flashMessage("Bentornato — riprendi la corsa", 1.1);
+    }
+  });
   onResize();
   logDebug("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
   if (pendingStart) {
@@ -388,32 +524,6 @@ export async function initGame() {
     manualStartGame();
   }
   animate();
-}
-
-function addLights(scene: THREE.Scene) {
-  // delegated to entities.addLights to keep imports consistent
-  // But we can't re-import here, so we redefine minimal:
-  const ambient = new THREE.AmbientLight(GAME_CONFIG.ambientColor, 0.9);
-  scene.add(ambient);
-
-  const hemi = new THREE.HemisphereLight(
-    GAME_CONFIG.hemiColorSky,
-    GAME_CONFIG.hemiColorGround,
-    0.65
-  );
-  scene.add(hemi);
-
-  const dir = new THREE.DirectionalLight(GAME_CONFIG.sunColor, 1.25);
-  dir.position.set(-12, 25, 30);
-  dir.castShadow = true;
-  dir.shadow.mapSize.set(1024, 1024);
-  dir.shadow.camera.near = 5;
-  dir.shadow.camera.far = 80;
-  dir.shadow.camera.left = -40;
-  dir.shadow.camera.right = 40;
-  dir.shadow.camera.top = 40;
-  dir.shadow.camera.bottom = -40;
-  scene.add(dir);
 }
 
 function addEventListeners() {
@@ -426,7 +536,7 @@ function addEventListeners() {
       input.turbo = true;
       if (gameState === "MENU") {
         startRun().catch((err) => console.error("Errore avvio gioco:", err));
-      } else if (gameState === "GAME_OVER" && gameOverCooldown <= 0) {
+      } else if ((gameState === "GAME_OVER" || gameState === "FINISHED") && gameOverCooldown <= 0) {
         restart().catch((err) => console.error("Errore riavvio gioco:", err));
       }
     }
@@ -446,6 +556,8 @@ function addEventListeners() {
   // Mouse / touch steering
   window.addEventListener("mousemove", (e) => {
     if (!world || gameState !== "RUNNING") return;
+    if ((e as MouseEvent & {sourceCapabilities?: {firesTouchEvents?: boolean}}).sourceCapabilities?.firesTouchEvents) return;
+    if ((e.target as Element)?.closest?.("button, #mobile-controls")) return;
     const xNorm = (e.clientX / window.innerWidth) * 2 - 1;
     world.player.laneX = THREE.MathUtils.lerp(
       world.player.laneX,
@@ -456,7 +568,8 @@ function addEventListeners() {
 
   window.addEventListener("touchmove", (e) => {
     if (!world || gameState !== "RUNNING") return;
-    const touch = e.touches[0];
+    const touch = Array.from(e.touches).find(t => !(t.target as Element)?.closest?.("button, #mobile-controls"));
+    if (!touch) return;
     const xNorm = (touch.clientX / window.innerWidth) * 2 - 1;
     world.player.laneX = THREE.MathUtils.lerp(
       world.player.laneX,
@@ -465,15 +578,28 @@ function addEventListeners() {
     );
   });
 
+  window.addEventListener("blur", clearInput);
+
 }
 
 function resetGameState() {
+  clearTimeout(resultTimer);
+  race.reset();
+  scoreSystem.elapsedSeconds = 0;
+  scoreSystem.lapCompleted = false;
+  scoreSystem.newBestLap = false;
+  try { scoreSystem.bestLapSeconds = parseBestLap(localStorage.getItem(BEST_LAP_KEY)); } catch { /* Session record remains available. */ }
+  silenceEngine();
   // Reset punteggi
   scoreSystem.score = 0;
   scoreSystem.distance = 0;
   scoreSystem.coins = 0;
+  scoreSystem.nearMisses = 0;
   scoreSystem.combo = 1;
+  scoreSystem.bestCombo = 1;
+  scoreSystem.missionCompleted = false;
   scoreSystem.lastComboTime = now();
+  syncRunSnapshot(runModel.reset());
 
   // Reset stato gioco
   turboTimeLeft = 0;
@@ -481,7 +607,12 @@ function resetGameState() {
   gameOverCooldown = 0;
   startGraceTime = 2.5; // secondi di strada libera all'avvio
   hudUpdateTimer = 0;
-  curveDistance = 0;
+  const selectedStart = Number((document.getElementById("route-select") as HTMLSelectElement | null)?.value ?? 0);
+  curveDistance = [0,120,420,940,1300].includes(selectedStart) ? selectedStart : 0;
+  districtId = "";
+  circuitRenderer?.reset(curveDistance);
+  const routeLabel = document.getElementById("district-value");
+  if (routeLabel) routeLabel.textContent = resolveCircuitPosition(curveDistance).district.name;
 
   // Reset input
   input.left = false;
@@ -493,6 +624,7 @@ function resetGameState() {
   if (!world) return;
 
   // Rimuovi TUTTI gli ostacoli
+  world.trackDistance = curveDistance;
   for (let i = world.obstacles.length - 1; i >= 0; i--) {
     world.scene.remove(world.obstacles[i].mesh);
   }
@@ -509,10 +641,10 @@ function resetGameState() {
   world.player.mesh.position.set(0, 0, -5);
   world.player.mesh.rotation.set(0, 0, 0);
 
-  // Reset spawn - metti lontano per evitare collisioni immediate
-  lastSpawnZ = -50;
-  lastCoinSpawnZ = -50;
-  lastRampSpawnZ = -50;
+  // Distance-based scheduling avoids frame bursts and gives a calm opening.
+  hazardSpawnDistanceLeft = 52;
+  coinSpawnDistanceLeft = 18;
+  rampSpawnDistanceLeft = 105;
   lastSpawnedLanes = [];
   lastTime = now();
 }
@@ -528,7 +660,7 @@ async function startRun() {
   hideGameOver();
 
   // Avvia il gioco immediatamente
-  gameState = "RUNNING";
+  gameStateMachine.dispatch(gameState === "MENU" ? "START" : "RESTART");
   lastTime = now();
   flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
@@ -550,14 +682,14 @@ export function manualStartGame() {
   if (isStartingGame) return;
   pendingStart = false;
 
-  if (gameState === "MENU" || gameState === "GAME_OVER") {
+  if (gameState === "MENU" || gameState === "GAME_OVER" || gameState === "FINISHED") {
     isStartingGame = true;
 
     // Reset sincrono senza async
     resetGameState();
     hideMenu();
     hideGameOver();
-    gameState = "RUNNING";
+    gameStateMachine.dispatch(gameState === "MENU" ? "START" : "RESTART");
     lastTime = now();
     flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
@@ -578,19 +710,13 @@ function bindHoldButton(
   onPress: () => void,
   onRelease: () => void
 ) {
-  const handlePress = (e: Event) => {
+  const handlePress = (e: PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // Feedback visivo
-    button.style.transform = 'scale(0.95)';
-    button.style.background = 'rgba(100, 200, 255, 0.9)';
-
-    // Se il gioco e in pausa/menu, avvialo subito al primo tap sui controlli mobili
-    if (gameState !== "RUNNING") {
-      manualStartGame();
-    }
-
+    if (gameState !== "RUNNING") return;
+    button.setPointerCapture(e.pointerId);
+    button.classList.add("is-pressed");
     onPress();
   };
 
@@ -598,26 +724,19 @@ function bindHoldButton(
     e.preventDefault();
     e.stopPropagation();
 
-    // Rimuovi feedback visivo
-    button.style.transform = 'scale(1)';
-    button.style.background = 'rgba(255, 255, 255, 0.92)';
-
+    button.classList.remove("is-pressed");
     onRelease();
   };
-
-  // Usa sia touch che pointer events per massima compatibilita
-  button.addEventListener("touchstart", handlePress, { passive: false, capture: true });
-  button.addEventListener("touchend", handleRelease, { passive: false, capture: true });
-  button.addEventListener("touchcancel", handleRelease, { passive: false, capture: true });
 
   button.addEventListener("pointerdown", handlePress);
   button.addEventListener("pointerup", handleRelease);
   button.addEventListener("pointercancel", handleRelease);
-  button.addEventListener("pointerleave", handleRelease);
+  button.addEventListener("lostpointercapture", handleRelease);
+}
 
-  // Fallback per mouse
-  button.addEventListener("mousedown", handlePress);
-  button.addEventListener("mouseup", handleRelease);
+function clearInput() {
+  input = {left: false, right: false, up: false, down: false, turbo: false};
+  document.querySelectorAll(".is-pressed").forEach(el => el.classList.remove("is-pressed"));
 }
 
 function onResize() {
@@ -633,27 +752,46 @@ function animate() {
   if (!world) return;
 
   const t = now();
-  const dt = Math.min(0.05, t - lastTime);
+  const elapsedDt = Math.max(0, t - lastTime);
+  const dt = Math.min(0.05, elapsedDt);
   lastTime = t;
+  if (documentPaused) {
+    world.renderer.render(world.scene, world.camera);
+    return;
+  }
   if (startGraceTime > 0 && gameState === "RUNNING") {
     startGraceTime = Math.max(0, startGraceTime - dt);
   }
 
   if (gameState === "RUNNING") {
     updatePlayer(dt);
-    updateObstacles(dt);
-    updateScore(dt);
+    const movementDt = race.advance(dt, world.player.speed, elapsedDt);
+    scoreSystem.elapsedSeconds = race.elapsed;
+    updateObstacles(movementDt);
+    updateScore(movementDt);
     checkCollisions();
-  } else if (gameState === "GAME_OVER") {
+    if (race.finished && gameStateMachine.state === "RUNNING") finishRun();
+  } else if (gameState === "GAME_OVER" || gameState === "FINISHED") {
     if (gameOverCooldown > 0) gameOverCooldown -= dt;
   }
 
   updateCamera(dt);
+  updateAtmosphere(t);
   world.renderer.render(world.scene, world.camera);
 }
 
 function updatePlayer(dt: number) {
   const p = world.player;
+  const difficulty = getDifficultyProfile(
+    scoreSystem.distance,
+    GAME_CONFIG.baseSpeed,
+    GAME_CONFIG.maxSpeed
+  );
+
+  // The available top speed opens up with the run instead of starting at the
+  // hardest pace. When the player is not braking, the cruise speed follows the
+  // same gradual curve.
+  p.maxSpeed = difficulty.maxSpeed;
 
   // Speed control
   if (input.up) {
@@ -661,6 +799,8 @@ function updatePlayer(dt: number) {
   }
   if (input.down) {
     p.targetSpeed -= 26 * dt;
+  } else if (!p.turboActive && p.targetSpeed < difficulty.cruiseSpeed) {
+    p.targetSpeed = lerp(p.targetSpeed, difficulty.cruiseSpeed, 0.45 * dt);
   }
   p.targetSpeed = clamp(p.targetSpeed, p.minSpeed, p.maxSpeed);
 
@@ -714,14 +854,14 @@ function updatePlayer(dt: number) {
   if (input.left) lateral -= 1;
   if (input.right) lateral += 1;
 
-  const maxX =
-    ((GAME_CONFIG.lanes - 1) / 2) * GAME_CONFIG.laneWidth + 0.4;
+  const maxX = streetLayout(curveDistance).laneSpacing + 0.4;
   p.laneX += lateral * p.lateralSpeed * dt;
   p.laneX = clamp(p.laneX, -maxX, maxX);
-  p.mesh.position.x = p.laneX + getCurveOffset();
+  p.mesh.position.x = p.laneX;
 
   // Lean effect
-  const targetRotZ = -lateral * 0.25;
+  const bend = sampleRoad(curveDistance + 5).heading - sampleRoad(curveDistance).heading;
+  const targetRotZ = -lateral * 0.25 + bend * 4;
   p.mesh.rotation.z = lerp(p.mesh.rotation.z, targetRotZ, 10 * dt);
 
   // Slight forward tilt with speed
@@ -740,38 +880,32 @@ function updatePlayer(dt: number) {
 function updateObstacles(dt: number) {
   const p = world.player;
   const cameraZ = world.player.mesh.position.z + 4;
+  const difficulty = getDifficultyProfile(
+    scoreSystem.distance,
+    GAME_CONFIG.baseSpeed,
+    GAME_CONFIG.maxSpeed
+  );
 
   // Move world backwards based on speed.
   const dz = p.speed * dt;
-
-  // Road + decor scroll
-  world.roadSegments.forEach((seg) => {
-    seg.position.z += dz;
-    if (seg.position.z > 10) {
-      seg.position.z -= GAME_CONFIG.roadLength;
-    }
-  });
-  world.buildings.forEach((b) => {
-    b.position.z += dz * 0.96;
-    if (b.position.z > 5) {
-      b.position.z -= 200;
-    }
-  });
-  world.streetLights.forEach((l) => {
-    l.position.z += dz * 0.98;
-    if (l.position.z > 5) {
-      l.position.z -= 400;
-    }
-  });
+  hazardSpawnDistanceLeft -= dz;
+  rampSpawnDistanceLeft -= dz;
+  coinSpawnDistanceLeft -= dz;
 
   curveDistance += dz;
-  world.roadSegments.forEach((seg) => applyCurveToObject(seg, 1));
-  world.buildings.forEach((b) => applyCurveToObject(b, 0.7));
-  world.streetLights.forEach((l) => applyCurveToObject(l, 0.9));
+  world.trackDistance = curveDistance;
+  circuitRenderer.update(curveDistance, dt);
+  const circuitPosition = resolveCircuitPosition(curveDistance);
+  const routeLabel = document.getElementById("district-value");
+  if (districtId !== circuitPosition.district.id) {
+    districtId = circuitPosition.district.id;
+    if (routeLabel) routeLabel.textContent = circuitPosition.district.name;
+    flashMessage(circuitPosition.district.name, 1.8);
+  }
 
   // Spawn new obstacles ahead of player
   // IMPORTANT: Limit max obstacles on screen to ensure playability
-  const MAX_HAZARDS = 4; // Only allow 4 hazards at a time
+  const MAX_HAZARDS = difficulty.maxHazards;
   const MAX_RAMPS = 3;
   const MAX_COINS = 30;
   let hazardCount = 0;
@@ -787,60 +921,93 @@ function updateObstacles(dt: number) {
     }
   }
 
-  const forwardZ = cameraZ - GAME_CONFIG.spawnDistanceMax;
-  if (startGraceTime <= 0 && lastSpawnZ > forwardZ && hazardCount < MAX_HAZARDS) {
-    const spawnZ =
-      cameraZ -
-      (GAME_CONFIG.spawnDistanceMin +
-        Math.random() *
-          (GAME_CONFIG.spawnDistanceMax -
-            GAME_CONFIG.spawnDistanceMin));
-    lastSpawnZ = spawnZ;
+  let spawnedHazardThisTick = false;
+  if (race.distance < RACE_DISTANCE - 160 && startGraceTime <= 0 && hazardSpawnDistanceLeft <= 0 && hazardCount < MAX_HAZARDS) {
+    const spawnZ = cameraZ - randomBetween(
+      difficulty.hazardSpawnAheadMin,
+      difficulty.hazardSpawnAheadMax
+    );
+    const occupiedLanes = occupiedHazardLanesAt(spawnZ);
 
-    const spawnedObstacle = spawnObstacle(world, spawnZ, lastSpawnedLanes);
+    // Never add the third blocked lane in a road segment. In the unlikely case
+    // two lanes are already occupied, give the player another short breather.
+    if (occupiedLanes.size < streetLayout(curveDistance - 5 - spawnZ).lanes.length - 1) {
+      const spawnedObstacle = spawnObstacle(world, spawnZ, lastSpawnedLanes);
+      spawnedHazardThisTick = true;
 
-    // Track last 3 spawned lanes to ensure variety
-    lastSpawnedLanes.push(spawnedObstacle.laneIndex);
-    if (lastSpawnedLanes.length > 2) {
-      lastSpawnedLanes.shift();
+      // Remember two recent lanes: this produces readable alternating patterns
+      // while the generous longitudinal gap preserves a visible escape route.
+      lastSpawnedLanes.push(spawnedObstacle.laneIndex);
+      if (lastSpawnedLanes.length > 2) {
+        lastSpawnedLanes.shift();
+      }
+      hazardSpawnDistanceLeft = randomBetween(
+        difficulty.hazardSpacingMin,
+        difficulty.hazardSpacingMax
+      );
+    } else {
+      hazardSpawnDistanceLeft = 12;
     }
   }
 
-  const rampForwardZ = cameraZ - GAME_CONFIG.rampSpawnDistanceMax;
-  if (startGraceTime <= 0 && rampCount < MAX_RAMPS && lastRampSpawnZ > rampForwardZ) {
-    const rampZ =
-      cameraZ -
-      (GAME_CONFIG.rampSpawnDistanceMin +
-        Math.random() *
-          (GAME_CONFIG.rampSpawnDistanceMax -
-            GAME_CONFIG.rampSpawnDistanceMin));
-    lastRampSpawnZ = rampZ;
-    if (Math.random() < GAME_CONFIG.rampSpawnChance) {
+  if (
+    startGraceTime <= 0 &&
+    race.distance < RACE_DISTANCE - 160 &&
+    !spawnedHazardThisTick &&
+    rampCount < MAX_RAMPS &&
+    rampSpawnDistanceLeft <= 0
+  ) {
+    const rampZ = cameraZ - randomBetween(
+      difficulty.hazardSpawnAheadMin,
+      difficulty.hazardSpawnAheadMax
+    );
+    const occupiedLanes = occupiedHazardLanesAt(rampZ);
+    rampSpawnDistanceLeft = randomBetween(
+      difficulty.rampSpacingMin,
+      difficulty.rampSpacingMax
+    );
+    // A ramp is optional, never the piece that visually closes the last lane.
+    if (
+      occupiedLanes.size < streetLayout(curveDistance - 5 - rampZ).lanes.length - 1 &&
+      Math.random() < difficulty.rampChance
+    ) {
       spawnRamp(world, rampZ, lastSpawnedLanes);
     }
+  } else if (spawnedHazardThisTick && rampSpawnDistanceLeft <= 0) {
+    // Do not create two new gameplay rows in the same frame.
+    rampSpawnDistanceLeft = 10;
   }
 
-  const coinForwardZ = cameraZ - GAME_CONFIG.coinSpawnDistanceMax;
-  if (coinCount < MAX_COINS && lastCoinSpawnZ > coinForwardZ) {
-    const coinZ =
-      cameraZ -
-      (GAME_CONFIG.coinSpawnDistanceMin +
-        Math.random() *
-          (GAME_CONFIG.coinSpawnDistanceMax -
-            GAME_CONFIG.coinSpawnDistanceMin));
-    lastCoinSpawnZ = coinZ;
-    const laneIndex = Math.floor(Math.random() * GAME_CONFIG.lanes);
+  if (coinCount < MAX_COINS && coinSpawnDistanceLeft <= 0) {
+    const coinZ = cameraZ - randomBetween(
+      GAME_CONFIG.coinSpawnDistanceMin,
+      GAME_CONFIG.coinSpawnDistanceMax
+    );
+    coinSpawnDistanceLeft = randomBetween(22, 34);
+    const laneIndex = pickReadableCoinLane(coinZ);
     spawnCoin(world, coinZ, laneIndex);
     spawnCoin(world, coinZ - 1.6, laneIndex);
     spawnCoin(world, coinZ - 3.2, laneIndex);
     spawnCoin(world, coinZ - 4.8, laneIndex);
   }
 
-  // Move cars slightly or keep static; cleanup passed obstacles
+  // Traffic has its own forward speed. Static hazards and pickups scroll at
+  // the full player speed; cars approach more slowly because both vehicles
+  // travel in the same direction.
   for (let i = world.obstacles.length - 1; i >= 0; i--) {
     const o = world.obstacles[i];
-    o.mesh.position.z += dz;
-    o.mesh.position.x = o.laneOffset + getCurveOffset();
+    o.mesh.userData.previousZ = trackZ(o);
+    const obstacleDz =
+      o.type === "CAR"
+        ? Math.max(0, p.speed - updateTrafficCar(o.mesh, p.speed, dt)) * dt
+        : dz;
+    o.mesh.userData.trackZ += obstacleDz;
+    const obstacleDistance = curveDistance - 5 - trackZ(o);
+    o.laneOffset = (o.laneIndex - 1) * streetLayout(obstacleDistance).laneSpacing;
+    const projected = projectRoadPoint(obstacleDistance, o.laneOffset, curveDistance);
+    o.mesh.position.x = projected.x;
+    o.mesh.position.z = projected.z;
+    if (o.type !== "COIN") o.mesh.rotation.y = projected.heading;
 
     if (o.type === "COIN") {
       o.mesh.rotation.y += dt * 3;
@@ -848,42 +1015,46 @@ function updateObstacles(dt: number) {
     }
 
     // More aggressive cleanup - remove obstacles that are behind the player
-    if (o.mesh.position.z > p.mesh.position.z + 10) {
+    if (trackZ(o) > p.mesh.position.z + 10) {
       world.scene.remove(o.mesh);
       world.obstacles.splice(i, 1);
       continue;
     }
 
     // Mark as "passed" for scoring
-    if (!o.passed && o.mesh.position.z > p.mesh.position.z) {
+    if (!o.passed && trackZ(o) > p.mesh.position.z) {
       o.passed = true;
       if (isHazard(o.type)) {
-        scoreSystem.distance += 1;
-        scoreSystem.combo = clamp(scoreSystem.combo + 0.1, 1, 5);
-        scoreSystem.lastComboTime = now();
-        const ui = getUI();
-        if (ui) animateHUDPop(ui.streak, 0.16, 1.15);
+        const lateralGap = Math.abs(p.laneX - o.laneOffset);
+        const nearMissLimit = o.collisionRadius + 1.15;
+        if (
+          !p.isJumping &&
+          lateralGap > o.collisionRadius &&
+          lateralGap <= nearMissLimit
+        ) {
+          syncRunSnapshot(runModel.registerNearMiss());
+          p.turboCharge = clamp(p.turboCharge + 0.12, 0, 1);
+          flashMessage("BELLA FIGURA · NEAR-MISS +75", 0.9);
+          const ui = getUI();
+          if (ui) animateHUDPop(ui.streak, 0.18, 1.22);
+        }
       }
     }
   }
 }
 
 function updateScore(dt: number) {
-  scoreSystem.distance += world.player.speed * dt * 0.02;
-  scoreSystem.score +=
-    (world.player.speed * 0.35 + scoreSystem.combo * 4) * dt;
-
-  // Combo decay over time if nothing new happens
-  if (now() - scoreSystem.lastComboTime > GAME_CONFIG.comboTimeout) {
-    scoreSystem.combo = lerp(scoreSystem.combo, 1, 0.6 * dt);
+  const wasComplete = scoreSystem.missionCompleted;
+  let snapshot = runModel.advance(dt, world.player.speed);
+  if (!wasComplete && snapshot.mission?.completed) {
+    snapshot = runModel.awardBonus(500);
+    flashMessage("MISSIONE COMPLETATA · +500", 1.8);
   }
+  syncRunSnapshot(snapshot);
 }
 
 function awardCoin() {
-  scoreSystem.coins += 1;
-  scoreSystem.score += GAME_CONFIG.coinValue;
-  scoreSystem.combo = clamp(scoreSystem.combo + 0.15, 1, 6);
-  scoreSystem.lastComboTime = now();
+  syncRunSnapshot(runModel.collectCoin());
   const ui = getUI();
   if (ui) animateHUDPop(ui.score, 0.12, 1.1);
 }
@@ -902,25 +1073,35 @@ function checkCollisions() {
   if (startGraceTime > 0) return;
 
   const p = world.player;
-  const px = p.mesh.position.x;
+  const px = p.laneX;
   const pz = p.mesh.position.z;
   const py = p.mesh.position.y;
 
   for (let i = world.obstacles.length - 1; i >= 0; i--) {
     const o = world.obstacles[i];
-    const oz = o.mesh.position.z;
+    const oz = trackZ(o);
     const relZ = oz - pz;
+    const previousZ =
+      typeof o.mesh.userData.previousZ === "number"
+        ? o.mesh.userData.previousZ
+        : oz;
+    const previousRelZ = previousZ - pz;
 
     // Use the obstacle's specific collision radius
     const radius = o.collisionRadius;
 
     // Only check obstacles that are close in Z axis
-    if (Math.abs(relZ) > radius * 2.5) continue;
+    const crossedPlayer = previousRelZ * relZ <= 0;
+    const closestRelZ = crossedPlayer
+      ? 0
+      : Math.abs(previousRelZ) < Math.abs(relZ)
+        ? previousRelZ
+        : relZ;
+    if (Math.abs(closestRelZ) > radius * 2.5) continue;
 
-    const ox = o.mesh.position.x;
+    const ox = o.laneOffset;
     const dx = px - ox;
-    const dz = pz - oz;
-    const distSq = dx * dx + dz * dz;
+    const distSq = dx * dx + closestRelZ * closestRelZ;
 
     if (distSq < radius * radius) {
       if (o.type === "COIN") {
@@ -952,19 +1133,25 @@ function checkCollisions() {
 
 async function triggerGameOver() {
   if (gameState !== "RUNNING") return;
-  gameState = "GAME_OVER";
+  gameStateMachine.dispatch("CRASH");
+  silenceEngine();
+  clearInput();
+  world.player.speed = 0;
+  world.player.targetSpeed = 0;
+  world.player.turboActive = false;
+  updateHUD(scoreSystem, 0, world.player.turboCharge);
   gameOverCooldown = 0.5;
   cameraShakeIntensity = 1.2;
 
   playCrash();
 
   const final = scoreSystem.score;
-  const best = await saveHighScoreIfNeeded(final);
+  const best = await saveHighScoreIfNeeded(final).catch(() => scoreSystem.highScore);
   scoreSystem.highScore = Math.max(best, final);
 
   const ui = getUI();
   if (ui) {
-    setTimeout(() => {
+    resultTimer = setTimeout(() => {
       showGameOver(scoreSystem);
     }, 400);
   }
@@ -983,8 +1170,8 @@ function updateCamera(dt: number) {
   );
 
   // dynamic camera distance
-  cameraBaseOffset.z = 8.2 + speedFactor * 3.5;
-  cameraBaseOffset.y = 3.4 + speedFactor * 0.9;
+  cameraBaseOffset.z = 7.4 + speedFactor * 2.5;
+  cameraBaseOffset.y = 3.2 + speedFactor * 0.7;
 
   cameraTargetPos.set(
     p.mesh.position.x * 0.35,
@@ -1006,9 +1193,33 @@ function updateCamera(dt: number) {
   lerpVec3(cam.position, cameraTargetPos, 5 * dt);
 
   cameraLookAt.set(
-    p.mesh.position.x,
+    p.mesh.position.x * .5 + projectRoadPoint(curveDistance + 20, 0, curveDistance).x * .45,
     p.mesh.position.y + 1.5,
-    p.mesh.position.z - 6
+    p.mesh.position.z - 10
   );
   cam.lookAt(cameraLookAt);
+}
+
+function finishRun() {
+  if (gameState !== "RUNNING") return;
+  gameStateMachine.dispatch("FINISH");
+  silenceEngine();
+  clearInput();
+  world.player.speed = world.player.targetSpeed = 0;
+  world.player.turboActive = false;
+  world.player.mesh.position.y = 0;
+  world.player.mesh.rotation.set(0, 0, 0);
+  scoreSystem.distance = RACE_DISTANCE;
+  scoreSystem.lapCompleted = true;
+  scoreSystem.newBestLap = scoreSystem.bestLapSeconds === null || race.elapsed < scoreSystem.bestLapSeconds;
+  if (scoreSystem.newBestLap) {
+    scoreSystem.bestLapSeconds = race.elapsed;
+    try { localStorage.setItem(BEST_LAP_KEY, String(race.elapsed)); } catch { /* Keep the record for this session. */ }
+  }
+  scoreSystem.highScore = Math.max(scoreSystem.highScore, scoreSystem.score);
+  void saveHighScoreIfNeeded(scoreSystem.score).catch(() => {});
+  gameOverCooldown = 1.2;
+  updateHUD(scoreSystem, 0, world.player.turboCharge);
+  flashMessage("FINISH · Giro completato!", 1.2);
+  resultTimer = setTimeout(() => showGameOver(scoreSystem), 1200);
 }
