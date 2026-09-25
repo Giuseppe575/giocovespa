@@ -25,9 +25,10 @@ Aggiornamento: 25 settembre 2026.
 
 ## Pubblicazione
 
-Release tramite PR #30 verso master; GitHub Pages usa master:/docs.
+Release pubblicata tramite PR #30, integrata in master il 25 settembre 2026 alle 22:53 CEST. GitHub Pages usa master:/docs.
 https://giuseppe575.github.io/giocovespa/
-Completamento deploy da confermare con stato Pages e asset serviti dopo push/merge.
+Commit codice: 0f2083e; merge: fc0aa65. GitHub Pages: build completata senza errori.
+Verificato sul sito pubblico il bundle index-B_mMw4D7.js e la partenza mobile touch con Vespa grigia dal lungomare, progresso su 1800 m, nessun errore JavaScript o richiesta fallita. Memoria e avanzamento sono inclusi nei commit.
 
 ## Prossimi controlli
 

@@ -28,3 +28,7 @@
 - Il file personale non tracciato palazzigrafica.png resta intatto e fuori dai commit.
 - QA locale in output/playwright/, ignorato da Git. I test con giro abbreviato intercettano solo risposte di sviluppo: mai trasferire l'abbreviazione in produzione.
 - Prove mobile emulate non equivalgono a prova hardware o certificazione Safari iOS.
+
+## Ultima consegna verificata
+
+25 settembre 2026: PR #30 integrata e Pages pubblicato. Codice 0f2083e, merge fc0aa65; asset pubblico index-B_mMw4D7.js. Smoke test sulla pagina pubblica riuscito anche con input touch emulato (Vespa grigia, lungomare, gara da 1800 m). Vedere STATUS.md e RELEASE_CHECKLIST.md per test e limiti.

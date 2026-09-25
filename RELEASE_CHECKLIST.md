@@ -8,9 +8,9 @@
 - [x] Layout e touch mobile emulati; limiti hardware documentati in STATUS.
 - [x] Aggiornati memoria, avanzamento e istruzioni di avvio.
 - [x] Nessuna migrazione database o dipendenza da modelli remoti/segreti.
-- [ ] Push della release, PR #30 pronta e merge in master.
-- [ ] Build Pages completata e asset pubblici corrispondenti al build locale.
-- [ ] Smoke test pubblico: caricamento, scelta colore e partenza.
+- [x] Push 0f2083e; PR #30 integrata in master (fc0aa65).
+- [x] Build Pages completata senza errori; pagina pubblica usa index-B_mMw4D7.js del build locale.
+- [x] Smoke test pubblico mobile touch: caricamento, Vespa grigia, partenza dal lungomare, avanzamento su 1800 m; nessun errore JS o richiesta fallita.
 
 ## Ripristino
 
