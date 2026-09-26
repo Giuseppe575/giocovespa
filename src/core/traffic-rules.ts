@@ -1,22 +1,27 @@
 import { FLORENCE_CROSSINGS, type Crossing } from "./florence";
 export type CrossingPhase = "waiting" | "crossing" | "clear";
-export type CrossingState = Crossing & {phase:CrossingPhase; elapsed:number; progress:number; light:"red"|"green"; served:boolean};
+export type CrossingState = Crossing & {phase:CrossingPhase; elapsed:number; progress:number; light:"red"|"green"; served:boolean;hasPedestrians?:boolean};
 
 /** Deterministic game timings, not live municipal signal phases. Pedestrians
  * cannot enter until the player has stopped at the approach line. */
 export class TrafficRules {
   crossings:CrossingState[]=[];
-  reset(definitions: readonly Crossing[]=FLORENCE_CROSSINGS) {
-    this.crossings=definitions.map(c=>({...c,phase:"waiting",elapsed:0,progress:0,light:c.signal?"red":"green",served:false}));
+  reset(definitions: readonly Crossing[]=FLORENCE_CROSSINGS,alternating=false,canCross:(crossing:Crossing)=>boolean=()=>true) {
+    this.crossings=definitions.map((c,index)=>{
+      // Never create an invisible pedestrian stop where the scenery has no safe path.
+      const hasPedestrians=(!alternating||index%2===1)&&canCross(c);
+      const bypass=!hasPedestrians&&!c.signal;
+      return {...c,hasPedestrians,phase:bypass?"clear":"waiting",elapsed:0,progress:0,light:c.signal?"red":"green",served:bypass};
+    });
   }
-  update(distance:number,speed:number,dt:number) {
+  update(distance:number,speed:number,dt:number,queued=false) {
     for(const c of this.crossings) {
       if(c.served||c.at-distance>70)continue;
       const stop=Math.max(0,c.at-7);
-      if(c.phase==="waiting"&&distance>=stop-.25&&speed<.15)c.phase="crossing";
+      if(c.phase==="waiting"&&distance>=stop-(queued?25:.25)&&speed<.15)c.phase="crossing";
       if(c.phase==="crossing"){
         c.elapsed+=dt;c.progress=Math.min(1,c.elapsed/6);
-        if(c.elapsed>=7){c.phase="clear";c.light="green";c.served=true;}
+        if(c.elapsed>=(c.hasPedestrians===false?2:7)){c.phase="clear";c.light="green";c.served=true;}
       }
     }
   }
@@ -32,7 +37,7 @@ export class TrafficRules {
   message(distance:number) {
     const next=this.next(distance);
     if(!next||next.at-distance>65)return "";
-    if(next.phase==="crossing")return "Pedoni in attraversamento · attendi";
+    if(next.phase==="crossing")return next.hasPedestrians===false?"Semaforo rosso · attendi il verde":"Pedoni in attraversamento · attendi";
     return next.signal?"Semaforo rosso · frenata assistita":"Strisce pedonali · lascia passare";
   }
 }

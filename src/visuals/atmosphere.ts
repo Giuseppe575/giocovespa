@@ -49,6 +49,7 @@ export function setupAtmosphere(scene: THREE.Scene, renderer: THREE.WebGLRendere
   // Ground closes the old sky-coloured gaps underneath buildings and pavements.
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(650,650),new THREE.MeshStandardMaterial({color:0xb7ae92,roughness:1}));
   ground.rotation.x=-Math.PI/2;
+  ground.name='city-ground';
   ground.position.set(0,-.24,-150);
   ground.receiveShadow=true;
   scene.add(ground);

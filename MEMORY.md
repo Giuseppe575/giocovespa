@@ -2,6 +2,13 @@
 
 ## Richiesta corrente · 26 settembre 2026
 
+- Dopo la release PR31 l'utente conferma audio e musica funzionanti. Non modificarli in questa fase.
+- Nuovo feedback: Firenze non riconoscibile, Arno non visibile, pedoni dentro muri, città senza auto. Richiesta esplicita di subagente per panoramica Google Earth: eseguita, risultati in FIRENZE_VISUAL_SURVEY.md (vista2024, non cantieri2026).
+- Revisione locale in corso: materiali fotografici CC0, finestre geometriche, terreno con foro reale per Arno, argini/verde, ponte San Niccolò/pescaia, 49 edifici sulla sponda opposta, pedoni validati contro impronte, traffico rado con fermate/code. Non chiamare fotorealistica o replica completa questa ricostruzione ancora semplificata.
+- Mostrare anteprima visiva all'utente prima di un'altra sostituzione della versione online; il sito pubblico resta PR31 finché non viene pubblicata una nuova release verificata.
+- Ultimo feedback recepito: troppi stop per pedoni. Tutte le 14 strisce restano, pedoni a passaggi alterni; esclusi anche i due punti a 415 e 1087 m senza spazio sicuro: 5 gruppi, 7 fermate totali compresi i rossi senza pedoni. Nessuna fermata per persone invisibili. Prima striscia libera, semafori rossi ancora vincolanti. Regole Firenze v2 per i record.
+- Revisione locale verificata: 65 test, TypeScript/build e controllo browser touch superati. Giro completo prima dell'ultima esclusione dei due punti, poi test mirati dell'esclusione. Audio invariato e controllato. Anteprima su http://127.0.0.1:5174/; non confonderla con la release pubblica PR31.
+
 - Utente conferma giocabilità su cellulare; audio motore talvolta assente. Correzioni audio e musica pubblicate con Firenze il 26 settembre 2026; da riprovare sul telefono fisico.
 - Musica scelta: Carefree, Kevin MacLeod, CC BY 4.0; crediti menu e public/audio/CREDITS.md. Pulsante separato musica, mute generale invariato.
 - Il percorso Santa Maria Novella–Palazzo Vecchio è SUPERATO. Partenza confermata: Duomo / Santa Maria del Fiore, sulla strada carrabile adiacente; percorso circa 2 km verso e lungo l'Arno, senza zone pedonali.

@@ -2,7 +2,18 @@
 
 The runtime scooter, rider, residents, buildings, church, street furniture and surface textures are authored procedurally in this repository. The classic scooter and rider were refined against the rear-view image supplied by the user on 25 September 2026. The image itself is not embedded or redistributed.
 
-No external model files or texture downloads are required by the published game. Three.js and its geometry utilities remain governed by their package license. This is an original game model inspired by a classic Italian scooter, not a photogrammetric scan or an officially licensed Piaggio model.
+No external model files are required. Florence's new local preview uses the photographic materials listed below, served from this repository with no third-party calls while playing. Three.js and its geometry utilities remain governed by their package license. This is an original game model inspired by a classic Italian scooter, not a photogrammetric scan or an officially licensed Piaggio model.
+
+## Florence photographic materials · local preview revision
+
+Poly Haven assets, CC0 (https://polyhaven.com/license), downloaded at 1K resolution on 26 September 2026. Original diffuse and OpenGL normal JPGs are kept in public/textures/florence; tinting/tiling happens at runtime. These are generic photographed surfaces, NOT photographs of individual Florence facades.
+
+- Medieval Blocks 05, diffuse/normal: https://polyhaven.com/a/medieval_blocks_05
+- Painted Plaster Wall, diffuse/normal: https://polyhaven.com/a/painted_plaster_wall
+- Aerial Asphalt 01, diffuse/normal: https://polyhaven.com/a/aerial_asphalt_01
+- Grass Path 2, diffuse: https://polyhaven.com/a/grass_path_2
+
+The Google Earth imagery consulted for visual orientation is NOT copied or redistributed. FIRENZE_VISUAL_SURVEY.md records sources and imagery date. src/data/florence-southbank.json adds 49 complete OSM building footprints from the same previously downloaded extract under ODbL, with attribution embedded. Bridge and weir endpoints are also from that extract; vertical dimensions are authored estimates.
 
 ## Music added 26 September 2026
 
