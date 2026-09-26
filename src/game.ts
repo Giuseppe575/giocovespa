@@ -1,8 +1,13 @@
 import * as THREE from "three";
 import { setupAtmosphere, updateAtmosphere } from "./visuals/atmosphere";
 import { setEngineGate } from "./core/engine-gate";
+import { AudioRecovery } from "./core/audio-recovery";
+import { BackgroundMusic } from "./audio/music";
 import { RaceProgress, RACE_DISTANCE, BEST_LAP_KEY, parseBestLap } from "./core/race";
-import { projectRoadPoint, sampleRoad, streetLayout } from "./core/road-path";
+import { projectRoadPoint, sampleRoad, streetLayout, setRoadRoute, isFlorence } from "./core/road-path";
+import { FLORENCE_LENGTH, florenceStreet } from "./core/florence";
+import { TrafficRules } from "./core/traffic-rules";
+import { TrafficCrossings } from "./visuals/traffic-crossings";
 import { resolveCircuitPosition } from "./core/circuit";
 import { CircuitRenderer } from "./visuals/circuit-renderer";
 import { enhancePlayerModel } from "./visuals/player-model";
@@ -67,6 +72,7 @@ let input: InputState = {
   turbo: false,
 };
 let scoreSystem: ScoreSystem = {
+  raceDistance: RACE_DISTANCE,
   elapsedSeconds: 0,
   lapCompleted: false,
   bestLapSeconds: null,
@@ -116,11 +122,18 @@ let startGraceTime = 0;
 let hudUpdateTimer = 0;
 const HUD_UPDATE_INTERVAL = 1 / 20;
 let curveDistance = 0;
-const race = new RaceProgress();
+let race = new RaceProgress();
+const trafficRules = new TrafficRules();
+let crossingVisuals: TrafficCrossings;
+let bestLapKey = BEST_LAP_KEY;
+let highScoreKey = PERSISTENCE_KEYS.HIGH_SCORE;
 let resultTimer: ReturnType<typeof setTimeout> | undefined;
 let circuitRenderer: CircuitRenderer;
 let districtId = "";
-let audioInitPromise: Promise<void> | null = null;
+const audioRecovery = new AudioRecovery();
+let backgroundMusic: BackgroundMusic | null = null;
+let musicEnabled = true;
+let audioStarted = false;
 let documentPaused = document.hidden;
 let engineAudible = false;
 function silenceEngine() {
@@ -210,13 +223,12 @@ function syncRunSnapshot(snapshot: RunSnapshot) {
   scoreSystem.lastComboTime = now();
 }
 
-async function initAudio() {
+function initAudio() {
   const AudioContextCtor =
     (window as any).AudioContext || (window as any).webkitAudioContext;
 
   if (!AudioContextCtor) {
     console.warn("AudioContext non supportato, avvio senza audio.");
-    audio.muted = true;
     return;
   }
 
@@ -224,20 +236,10 @@ async function initAudio() {
     audio.context = new AudioContextCtor();
   } catch (err) {
     console.warn("Impossibile creare l'audio, il gioco prosegue silenzioso.", err);
-    audio.muted = true;
     return;
   }
   const ctx = audio.context;
   if (!ctx) return;
-
-  if (ctx.state === "suspended") {
-    try {
-      await ctx.resume();
-    } catch (err) {
-      console.warn("Ripresa dell'audio bloccata, verra disabilitato.", err);
-      audio.muted = true;
-    }
-  }
 
   const mainOsc = ctx.createOscillator();
   mainOsc.type = "sawtooth";
@@ -248,13 +250,13 @@ async function initAudio() {
 
   const lfo = ctx.createOscillator();
   lfo.type = "sine";
-  lfo.frequency.value = 8;
+  lfo.frequency.value = 22;
 
   const lfoGain = ctx.createGain();
-  lfoGain.gain.value = 0.06;
+  lfoGain.gain.value = 0.025;
 
   const mix = ctx.createGain();
-  mix.gain.value = 0.0;
+  mix.gain.value = 0.11;
 
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
@@ -277,33 +279,37 @@ async function initAudio() {
   audio.engineOvertone = overtone;
   audio.engineGain = mix;
   audio.engineFilter = filter;
+  engineAudible = false;
+  backgroundMusic?.dispose();
+  backgroundMusic = new BackgroundMusic(ctx);
+  ctx.onstatechange = () => {
+    if (ctx !== audio.context) return;
+    if (ctx.state !== "running") silenceEngine();
+    else {
+      if (world) updateEngineSound(world.player.speed);
+      syncMusic();
+    }
+  };
 
   if (audio.muted) {
     mix.gain.value = 0;
   }
 }
 
-async function ensureAudioReady() {
-  if (audio.context) return;
-  if (audioInitPromise) return audioInitPromise;
-  audioInitPromise = initAudio();
-  try {
-    await audioInitPromise;
-  } finally {
-    audioInitPromise = null;
-  }
+function syncMusic() {
+  backgroundMusic?.sync(audioStarted && musicEnabled && !audio.muted && !documentPaused);
 }
 
-async function resumeAudioContext() {
-  if (!audio.context) return;
-  if (audio.context.state === "suspended") {
-    try {
-      await audio.context.resume();
-    } catch (err) {
-      console.warn("Impossibile riprendere AudioContext, il gioco continua senza audio:", err);
-      audio.muted = true;
-    }
-  }
+function activateAudio() {
+  if (audio.muted || documentPaused) return;
+  audioStarted = true;
+  if (!audio.context || audio.context.state === "closed") initAudio();
+  const context = audio.context;
+  if (!context) return;
+  void audioRecovery.resume(context, true).then(running => {
+    if (running && context === audio.context && world) updateEngineSound(world.player.speed);
+  });
+  syncMusic();
 }
 
 function updateEngineSound(speed: number) {
@@ -315,7 +321,7 @@ function updateEngineSound(speed: number) {
     !audio.engineFilter
   )
     return;
-  if (audio.muted || gameState !== "RUNNING" || documentPaused) {
+  if (audio.muted || gameState !== "RUNNING" || documentPaused || audio.context.state !== "running") {
     silenceEngine();
     return;
   }
@@ -324,9 +330,9 @@ function updateEngineSound(speed: number) {
     engineAudible = true;
   }
   const norm = clamp((speed - GAME_CONFIG.minSpeed) / (GAME_CONFIG.maxSpeed - GAME_CONFIG.minSpeed), 0, 1);
-  const freq = 120 + norm * 240;
+  const freq = 85 + norm * 150;
   const rumbleFreq = 70 + norm * 90;
-  const vol = 0.09 + norm * 0.11;
+  const vol = 0.11 + norm * 0.07;
 
   audio.engineNode.frequency.setTargetAtTime(freq, audio.context.currentTime, 0.12);
   audio.engineOvertone.frequency.setTargetAtTime(freq * 0.52, audio.context.currentTime, 0.14);
@@ -434,6 +440,7 @@ export async function initGame() {
   const buildings: THREE.Group[] = [];
   const streetLights: THREE.Group[] = [];
   circuitRenderer = new CircuitRenderer(scene);
+  crossingVisuals = new TrafficCrossings(scene);
   setupAtmosphere(scene, renderer);
 
   const vehiclesPool: THREE.Group[] = [];
@@ -458,6 +465,24 @@ export async function initGame() {
   logDebug("initGame() - UI inizializzata");
 
   const muteStored = await persistence.getItem(PERSISTENCE_KEYS.MUTE);
+  try { musicEnabled = localStorage.getItem("vespa_music_enabled") !== "0"; } catch { /* Default on. */ }
+  const musicToggle = document.getElementById("music-enabled") as HTMLInputElement;
+  musicToggle.checked = musicEnabled;
+  const musicButton = document.getElementById("music-btn") as HTMLButtonElement;
+  const updateMusicControls = () => {
+    musicToggle.checked = musicEnabled;
+    musicButton.setAttribute("aria-pressed", String(musicEnabled));
+    musicButton.setAttribute("aria-label", musicEnabled ? "Disattiva musica" : "Attiva musica");
+  };
+  const setMusicEnabled = (enabled: boolean) => {
+    musicEnabled = enabled;
+    try { localStorage.setItem("vespa_music_enabled", enabled ? "1" : "0"); } catch { /* Keep session setting. */ }
+    updateMusicControls();
+    if (enabled) activateAudio(); else syncMusic();
+  };
+  musicToggle.addEventListener("change", () => setMusicEnabled(musicToggle.checked));
+  musicButton.addEventListener("click", () => setMusicEnabled(!musicEnabled));
+  updateMusicControls();
   if (muteStored === "1") {
     audio.muted = true;
   }
@@ -484,14 +509,13 @@ export async function initGame() {
       audio.muted = !audio.muted;
       ui.muteBtn.setAttribute("aria-pressed", audio.muted ? "true" : "false");
       ui.muteBtn.setAttribute("aria-label", audio.muted ? "Attiva audio" : "Disattiva audio");
-      if (!audio.muted && !audio.context) {
-        await ensureAudioReady();
-      }
+      if (!audio.muted) activateAudio();
       if (audio.muted) {
         silenceEngine();
-        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1");
+        syncMusic();
+        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "1").catch(() => {});
       } else {
-        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0");
+        await persistence.setItem(PERSISTENCE_KEYS.MUTE, "0").catch(() => {});
       }
     };
 
@@ -507,14 +531,37 @@ export async function initGame() {
   resetGameState();
   showMenu();
 
+  const routeSelect=document.getElementById("route-select") as HTMLSelectElement;
+  const updateRouteCopy=()=>{
+    const florence=routeSelect.value==="florence";
+    const summary=document.getElementById("route-summary");
+    if(summary)summary.textContent=florence?"Firenze · 2003 m":"Un giro · 1800 m";
+    const description=document.getElementById("route-description");
+    if(description)description.textContent=florence?"Dal Duomo all'Arno, con fermate e attraversamenti.":"Quattro quartieri, un traguardo. Batti il tuo tempo!";
+    document.querySelector<HTMLElement>(".route-note")!.hidden=!florence;
+  };
+  routeSelect.addEventListener("change",()=>{updateRouteCopy();if(gameState==="MENU")resetGameState();});
+  updateRouteCopy();
+
   window.addEventListener("resize", onResize);
   document.addEventListener("visibilitychange", () => {
     documentPaused = document.hidden;
     if (documentPaused) { silenceEngine(); clearInput(); }
+    syncMusic();
     lastTime = now();
+    if (!documentPaused && audioStarted) activateAudio();
     if (!documentPaused && gameState === "RUNNING") {
       flashMessage("Bentornato — riprendi la corsa", 1.1);
     }
+  });
+  // Mobile audio can be interrupted by calls, screen lock or another app.
+  const recoverOnGesture = () => { if (audioStarted || gameState === "RUNNING") activateAudio(); };
+  window.addEventListener("pointerdown", recoverOnGesture, {passive:true});
+  window.addEventListener("touchend", recoverOnGesture, {passive:true});
+  window.addEventListener("keydown", recoverOnGesture);
+  window.addEventListener("pageshow", () => {
+    documentPaused = document.hidden;
+    if (audioStarted) activateAudio();
   });
   onResize();
   logDebug("initGame() - INIZIALIZZAZIONE COMPLETATA! Avvio animate loop...");
@@ -584,11 +631,20 @@ function addEventListeners() {
 
 function resetGameState() {
   clearTimeout(resultTimer);
-  race.reset();
+  const selection=(document.getElementById("route-select") as HTMLSelectElement | null)?.value ?? "0";
+  setRoadRoute(selection==="florence"?"florence":"city");
+  race = new RaceProgress(isFlorence()?FLORENCE_LENGTH:RACE_DISTANCE);
+  trafficRules.reset();
+  scoreSystem.raceDistance = race.length;
+  bestLapKey = isFlorence()?`${BEST_LAP_KEY}_florence_v1`:BEST_LAP_KEY;
+  highScoreKey = isFlorence()?`${PERSISTENCE_KEYS.HIGH_SCORE}_florence_v1`:PERSISTENCE_KEYS.HIGH_SCORE;
   scoreSystem.elapsedSeconds = 0;
   scoreSystem.lapCompleted = false;
   scoreSystem.newBestLap = false;
-  try { scoreSystem.bestLapSeconds = parseBestLap(localStorage.getItem(BEST_LAP_KEY)); } catch { /* Session record remains available. */ }
+  try {
+    scoreSystem.bestLapSeconds = parseBestLap(localStorage.getItem(bestLapKey));
+    scoreSystem.highScore = Math.max(0,Number(localStorage.getItem(highScoreKey))||0);
+  } catch { scoreSystem.bestLapSeconds=null;scoreSystem.highScore=0; }
   silenceEngine();
   // Reset punteggi
   scoreSystem.score = 0;
@@ -607,12 +663,14 @@ function resetGameState() {
   gameOverCooldown = 0;
   startGraceTime = 2.5; // secondi di strada libera all'avvio
   hudUpdateTimer = 0;
-  const selectedStart = Number((document.getElementById("route-select") as HTMLSelectElement | null)?.value ?? 0);
+  const selectedStart = Number(selection);
   curveDistance = [0,120,420,940,1300].includes(selectedStart) ? selectedStart : 0;
   districtId = "";
-  circuitRenderer?.reset(curveDistance);
+  circuitRenderer?.reset(curveDistance,race.length);
+  crossingVisuals?.update(curveDistance,trafficRules,isFlorence());
   const routeLabel = document.getElementById("district-value");
-  if (routeLabel) routeLabel.textContent = resolveCircuitPosition(curveDistance).district.name;
+  if (routeLabel) routeLabel.textContent = isFlorence()?florenceStreet(0):resolveCircuitPosition(curveDistance).district.name;
+  document.getElementById("route-attribution")?.classList.toggle("visible",isFlorence());
 
   // Reset input
   input.left = false;
@@ -665,8 +723,7 @@ async function startRun() {
   flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
   // Audio in background senza bloccare
-  ensureAudioReady().catch(() => {});
-  resumeAudioContext().catch(() => {});
+  activateAudio();
 }
 
 // Flag per evitare chiamate multiple
@@ -694,8 +751,7 @@ export function manualStartGame() {
     flashMessage("Vai! Evita auto e ostacoli - Carica il turbo", 1.8);
 
     // Audio non bloccante
-    ensureAudioReady().catch(() => {});
-    resumeAudioContext().catch(() => {});
+    activateAudio();
 
     isStartingGame = false;
   }
@@ -782,6 +838,7 @@ function animate() {
 
 function updatePlayer(dt: number) {
   const p = world.player;
+  if(isFlorence())trafficRules.update(curveDistance,p.speed,dt);
   const difficulty = getDifficultyProfile(
     scoreSystem.distance,
     GAME_CONFIG.baseSpeed,
@@ -792,6 +849,7 @@ function updatePlayer(dt: number) {
   // hardest pace. When the player is not braking, the cruise speed follows the
   // same gradual curve.
   p.maxSpeed = difficulty.maxSpeed;
+  if(isFlorence())p.maxSpeed=24;
 
   // Speed control
   if (input.up) {
@@ -837,6 +895,11 @@ function updatePlayer(dt: number) {
   }
 
   p.speed = lerp(p.speed, p.targetSpeed, 0.9 * dt);
+  if(isFlorence()) {
+    const speed=trafficRules.limitSpeed(curveDistance,p.speed,dt);
+    if(speed<p.speed){p.targetSpeed=Math.min(p.targetSpeed,Math.max(speed,p.minSpeed));p.turboActive=false;turboTimeLeft=0;}
+    p.speed=speed;
+  }
 
   // Jump physics
   if (p.isJumping) {
@@ -861,11 +924,11 @@ function updatePlayer(dt: number) {
 
   // Lean effect
   const bend = sampleRoad(curveDistance + 5).heading - sampleRoad(curveDistance).heading;
-  const targetRotZ = -lateral * 0.25 + bend * 4;
+  const targetRotZ = p.speed<.1?0:-lateral * 0.25 + clamp(Math.atan2(Math.sin(bend),Math.cos(bend))*2,-.28,.28);
   p.mesh.rotation.z = lerp(p.mesh.rotation.z, targetRotZ, 10 * dt);
 
   // Slight forward tilt with speed
-  const targetRotX = -0.05 - (p.speed - GAME_CONFIG.baseSpeed) * 0.002;
+  const targetRotX = p.speed<.1?0:-0.05 - (p.speed - GAME_CONFIG.baseSpeed) * 0.002;
   p.mesh.rotation.x = lerp(p.mesh.rotation.x, targetRotX, 2 * dt);
 
   updateEngineSound(p.speed);
@@ -895,12 +958,18 @@ function updateObstacles(dt: number) {
   curveDistance += dz;
   world.trackDistance = curveDistance;
   circuitRenderer.update(curveDistance, dt);
+  crossingVisuals.update(curveDistance,trafficRules,isFlorence());
   const circuitPosition = resolveCircuitPosition(curveDistance);
   const routeLabel = document.getElementById("district-value");
-  if (districtId !== circuitPosition.district.id) {
-    districtId = circuitPosition.district.id;
-    if (routeLabel) routeLabel.textContent = circuitPosition.district.name;
-    flashMessage(circuitPosition.district.name, 1.8);
+  const street = isFlorence()?florenceStreet(curveDistance):circuitPosition.district.name;
+  if (districtId !== street) {
+    districtId = street;
+    if (routeLabel) routeLabel.textContent = street;
+    flashMessage(street, 1.8);
+  }
+  if(isFlorence()) {
+    const message=trafficRules.message(curveDistance);
+    if(message){const ui=getUI();if(ui){ui.message.textContent=message;ui.message.style.opacity="1";}}
   }
 
   // Spawn new obstacles ahead of player
@@ -922,7 +991,7 @@ function updateObstacles(dt: number) {
   }
 
   let spawnedHazardThisTick = false;
-  if (race.distance < RACE_DISTANCE - 160 && startGraceTime <= 0 && hazardSpawnDistanceLeft <= 0 && hazardCount < MAX_HAZARDS) {
+  if (!isFlorence() && race.distance < race.length - 160 && startGraceTime <= 0 && hazardSpawnDistanceLeft <= 0 && hazardCount < MAX_HAZARDS) {
     const spawnZ = cameraZ - randomBetween(
       difficulty.hazardSpawnAheadMin,
       difficulty.hazardSpawnAheadMax
@@ -952,7 +1021,7 @@ function updateObstacles(dt: number) {
 
   if (
     startGraceTime <= 0 &&
-    race.distance < RACE_DISTANCE - 160 &&
+    !isFlorence() && race.distance < race.length - 160 &&
     !spawnedHazardThisTick &&
     rampCount < MAX_RAMPS &&
     rampSpawnDistanceLeft <= 0
@@ -1146,7 +1215,7 @@ async function triggerGameOver() {
   playCrash();
 
   const final = scoreSystem.score;
-  const best = await saveHighScoreIfNeeded(final).catch(() => scoreSystem.highScore);
+  const best = await saveHighScoreIfNeeded(final,highScoreKey).catch(() => scoreSystem.highScore);
   scoreSystem.highScore = Math.max(best, final);
 
   const ui = getUI();
@@ -1209,15 +1278,15 @@ function finishRun() {
   world.player.turboActive = false;
   world.player.mesh.position.y = 0;
   world.player.mesh.rotation.set(0, 0, 0);
-  scoreSystem.distance = RACE_DISTANCE;
+  scoreSystem.distance = race.length;
   scoreSystem.lapCompleted = true;
   scoreSystem.newBestLap = scoreSystem.bestLapSeconds === null || race.elapsed < scoreSystem.bestLapSeconds;
   if (scoreSystem.newBestLap) {
     scoreSystem.bestLapSeconds = race.elapsed;
-    try { localStorage.setItem(BEST_LAP_KEY, String(race.elapsed)); } catch { /* Keep the record for this session. */ }
+    try { localStorage.setItem(bestLapKey, String(race.elapsed)); } catch { /* Keep the record for this session. */ }
   }
   scoreSystem.highScore = Math.max(scoreSystem.highScore, scoreSystem.score);
-  void saveHighScoreIfNeeded(scoreSystem.score).catch(() => {});
+  void saveHighScoreIfNeeded(scoreSystem.score,highScoreKey).catch(() => {});
   gameOverCooldown = 1.2;
   updateHUD(scoreSystem, 0, world.player.turboCharge);
   flashMessage("FINISH · Giro completato!", 1.2);

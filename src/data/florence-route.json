@@ -1,0 +1,401 @@
+{
+  "id": "florence-duomo-arno",
+  "name": "Firenze · Duomo e Arno",
+  "status": "playable-geographic-reconstruction",
+  "surveyDate": "2026-09-26",
+  "distanceMeters": 2003.4,
+  "geometry": {
+    "coordinates": [
+      [
+        11.257831,
+        43.772579
+      ],
+      [
+        11.257836,
+        43.77255
+      ],
+      [
+        11.257837,
+        43.772537
+      ],
+      [
+        11.257857,
+        43.772346
+      ],
+      [
+        11.257868,
+        43.772255
+      ],
+      [
+        11.257875,
+        43.772165
+      ],
+      [
+        11.257889,
+        43.771976
+      ],
+      [
+        11.257904,
+        43.771775
+      ],
+      [
+        11.257923,
+        43.771517
+      ],
+      [
+        11.257927,
+        43.771494
+      ],
+      [
+        11.257928,
+        43.771391
+      ],
+      [
+        11.257926,
+        43.771217
+      ],
+      [
+        11.257896,
+        43.770935
+      ],
+      [
+        11.257894,
+        43.770914
+      ],
+      [
+        11.257893,
+        43.770907
+      ],
+      [
+        11.257891,
+        43.770891
+      ],
+      [
+        11.257846,
+        43.770619
+      ],
+      [
+        11.257915,
+        43.770614
+      ],
+      [
+        11.258511,
+        43.770572
+      ],
+      [
+        11.258656,
+        43.770562
+      ],
+      [
+        11.258713,
+        43.770558
+      ],
+      [
+        11.258762,
+        43.770554
+      ],
+      [
+        11.259929,
+        43.770463
+      ],
+      [
+        11.26026,
+        43.770436
+      ],
+      [
+        11.260544,
+        43.770411
+      ],
+      [
+        11.260602,
+        43.770406
+      ],
+      [
+        11.261448,
+        43.770256
+      ],
+      [
+        11.261545,
+        43.77024
+      ],
+      [
+        11.261631,
+        43.770221
+      ],
+      [
+        11.262035,
+        43.770139
+      ],
+      [
+        11.262076,
+        43.77013
+      ],
+      [
+        11.262519,
+        43.770031
+      ],
+      [
+        11.262754,
+        43.769979
+      ],
+      [
+        11.263613,
+        43.7698
+      ],
+      [
+        11.263723,
+        43.769775
+      ],
+      [
+        11.263816,
+        43.769755
+      ],
+      [
+        11.264278,
+        43.769658
+      ],
+      [
+        11.264298,
+        43.769654
+      ],
+      [
+        11.265431,
+        43.769426
+      ],
+      [
+        11.26549,
+        43.769413
+      ],
+      [
+        11.265926,
+        43.769327
+      ],
+      [
+        11.267922,
+        43.768918
+      ],
+      [
+        11.268156,
+        43.768872
+      ],
+      [
+        11.268285,
+        43.768846
+      ],
+      [
+        11.268324,
+        43.768838
+      ],
+      [
+        11.2695,
+        43.768608
+      ],
+      [
+        11.269533,
+        43.768602
+      ],
+      [
+        11.269661,
+        43.768574
+      ],
+      [
+        11.269531,
+        43.768348
+      ],
+      [
+        11.269513,
+        43.768319
+      ],
+      [
+        11.269341,
+        43.768033
+      ],
+      [
+        11.269142,
+        43.767688
+      ],
+      [
+        11.268889,
+        43.767271
+      ],
+      [
+        11.268691,
+        43.766955
+      ],
+      [
+        11.268568,
+        43.766773
+      ],
+      [
+        11.268219,
+        43.766414
+      ],
+      [
+        11.26813,
+        43.766328
+      ],
+      [
+        11.268111,
+        43.766298
+      ],
+      [
+        11.268098,
+        43.766269
+      ],
+      [
+        11.268091,
+        43.766242
+      ],
+      [
+        11.268097,
+        43.766209
+      ],
+      [
+        11.268106,
+        43.766184
+      ],
+      [
+        11.268128,
+        43.766159
+      ],
+      [
+        11.268141,
+        43.76615
+      ],
+      [
+        11.268163,
+        43.766141
+      ],
+      [
+        11.268191,
+        43.766131
+      ],
+      [
+        11.268588,
+        43.766086
+      ],
+      [
+        11.268792,
+        43.766074
+      ],
+      [
+        11.269042,
+        43.76605
+      ],
+      [
+        11.269363,
+        43.766021
+      ],
+      [
+        11.270579,
+        43.765944
+      ],
+      [
+        11.270598,
+        43.765943
+      ],
+      [
+        11.270688,
+        43.765939
+      ],
+      [
+        11.271231,
+        43.765908
+      ],
+      [
+        11.271338,
+        43.765905
+      ],
+      [
+        11.271468,
+        43.765899
+      ],
+      [
+        11.271814,
+        43.765869
+      ],
+      [
+        11.274156,
+        43.765737
+      ],
+      [
+        11.274232,
+        43.765732
+      ],
+      [
+        11.274365,
+        43.765724
+      ]
+    ],
+    "type": "LineString"
+  },
+  "streets": [
+    {
+      "name": "Via del Proconsolo",
+      "distanceMeters": 218.4
+    },
+    {
+      "name": "Via Ghibellina",
+      "distanceMeters": 980.4
+    },
+    {
+      "name": "Viale della Giovine Italia",
+      "distanceMeters": 196.1
+    },
+    {
+      "name": "Piazza Piave",
+      "distanceMeters": 109.2
+    },
+    {
+      "name": "Lungarno Guglielmo Pecori Giraldi",
+      "distanceMeters": 254.7
+    },
+    {
+      "name": "Lungarno del Tempio",
+      "distanceMeters": 244.6
+    }
+  ],
+  "trafficSignals": [
+    {
+      "id": 41,
+      "name": "Ghibellina–Verdi",
+      "coordinates": [
+        11.26152109,
+        43.77023235
+      ],
+      "approximateDistanceMeters": 517
+    },
+    {
+      "id": 218,
+      "name": "Pecori Giraldi–Giovine Italia",
+      "coordinates": [
+        11.26856838,
+        43.76620768
+      ],
+      "approximateDistanceMeters": 1528
+    },
+    {
+      "id": 217,
+      "name": "Pecori Giraldi–Amendola",
+      "coordinates": [
+        11.27133575,
+        43.76589819
+      ],
+      "approximateDistanceMeters": 1756
+    }
+  ],
+  "attribution": {
+    "route": "© OpenStreetMap contributors; driving route computed using the public OSRM demo service.",
+    "routeLicense": "https://www.openstreetmap.org/copyright",
+    "signals": "Comune di Firenze, Impianti semaforici, CC BY 4.0.",
+    "signalsSource": "https://datigis.comune.fi.it/json/impianti_semaforici.json",
+    "pedestrianAreasSource": "https://datigis.comune.fi.it/json/areepedonali.json",
+    "pedestrianAreasLicense": "Comune di Firenze, CC BY 4.0"
+  },
+  "limitations": [
+    "Not a navigation service. ZTL permits, temporary restrictions and live road conditions are not verified.",
+    "No pedestrian-area overlap found in preliminary 2 m sampling against municipal polygons, not an on-site survey.",
+    "Signal locations are junction points, not surveyed stop-line positions. Signal timing is not provided.",
+    "Crosswalks, sidewalk widths, building elevations and facades still require suitable references."
+  ]
+}

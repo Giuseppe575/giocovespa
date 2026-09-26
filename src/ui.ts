@@ -1,6 +1,6 @@
 import { ScoreSystem, PERSISTENCE_KEYS } from "./definitions";
 import { persistence } from "./libs/persistence";
-import { RACE_DISTANCE, formatRaceTime } from "./core/race";
+import { formatRaceTime } from "./core/race";
 
 type RunStats = ScoreSystem & {
   nearMisses?: number;
@@ -39,7 +39,6 @@ type UIElements = {
   recapMission: HTMLElement;
 };
 
-const MISSION_DISTANCE = RACE_DISTANCE;
 let ui: UIElements | null = null;
 
 const queryRequired = <T extends HTMLElement>(id: string): T => {
@@ -98,19 +97,6 @@ const bindMobileTurbo = (button: HTMLButtonElement) => {
   button.addEventListener("lostpointercapture", () => {
     button.classList.remove("is-pressed");
     dispatchTurboKey("keyup");
-  });
-};
-
-const bindAccessibleMuteState = (button: HTMLButtonElement) => {
-  button.addEventListener("click", () => {
-    const willBeMuted = button.getAttribute("aria-pressed") !== "true";
-    queueMicrotask(() => {
-      button.setAttribute("aria-pressed", willBeMuted ? "true" : "false");
-      button.setAttribute(
-        "aria-label",
-        willBeMuted ? "Attiva audio" : "Disattiva audio"
-      );
-    });
   });
 };
 
@@ -178,7 +164,6 @@ export async function initUI(): Promise<UIElements> {
   ui.muteBtn.setAttribute("aria-label", muted ? "Attiva audio" : "Disattiva audio");
 
   bindMobileTurbo(ui.mobileTurbo);
-  bindAccessibleMuteState(ui.muteBtn);
   keepPrimaryCtaCopy(ui.playBtn);
   return ui;
 }
@@ -204,6 +189,7 @@ export function hideMenu() {
 export function showGameOver(scoreSystem: ScoreSystem) {
   if (!ui) return;
   const stats = scoreSystem as RunStats;
+  const MISSION_DISTANCE = stats.raceDistance;
   const score = Math.floor(stats.score);
   const highScore = Math.floor(stats.highScore);
   const distance = Math.max(0, Math.floor(stats.distance));
@@ -244,6 +230,8 @@ export function updateHUD(
 ) {
   if (!ui) return;
   const score = Math.floor(scoreSystem.score);
+  const MISSION_DISTANCE = scoreSystem.raceDistance;
+  ui.missionProgress.setAttribute("aria-valuemax",String(MISSION_DISTANCE));
   const distance = Math.max(0, scoreSystem.distance);
   const turboPercent = Math.round(Math.max(0, Math.min(turboCharge, 1)) * 100);
   const missionComplete = distance >= MISSION_DISTANCE;
@@ -260,7 +248,7 @@ export function updateHUD(
   setProgress(ui.missionProgress, ui.missionProgressFill, distance, MISSION_DISTANCE);
   ui.missionValue.textContent = missionComplete
     ? "FINISH · Giro completato!"
-    : `${Math.floor(distance)} / ${MISSION_DISTANCE} m`;
+    : `${Math.floor(distance)} / ${Math.round(MISSION_DISTANCE)} m`;
   ui.missionProgress.classList.toggle("is-complete", missionComplete);
   ui.turboProgress.classList.toggle("is-ready", turboCharge >= 0.99);
 
@@ -276,12 +264,12 @@ export function updateHUD(
   }
 }
 
-export async function saveHighScoreIfNeeded(score: number): Promise<number> {
-  const existing = await persistence.getItem(PERSISTENCE_KEYS.HIGH_SCORE);
+export async function saveHighScoreIfNeeded(score: number,key=PERSISTENCE_KEYS.HIGH_SCORE): Promise<number> {
+  const existing = await persistence.getItem(key);
   const prev = existing ? parseFloat(existing) : 0;
   if (score > prev) {
     await persistence.setItem(
-      PERSISTENCE_KEYS.HIGH_SCORE,
+      key,
       Math.floor(score).toString()
     );
     return score;

@@ -32,6 +32,18 @@
 .color-picker input { accent-color:var(--sea); margin:0; }
 .color-swatch { width:15px;height:15px;border:1px solid #999;border-radius:50%; }
 .swatch-red {background:#b90912}.swatch-white {background:#eeeae1}.swatch-gray {background:#686d72}
+.music-option { display:flex; align-items:center; gap:8px; min-height:44px; font-size:12px; margin-top:6px; cursor:pointer; }
+.panel { touch-action:pan-y; }
+.music-option input { accent-color:var(--sea); width:18px; height:18px; }
+.music-credit { font-size:10px; color:var(--ink-soft); margin:0; }
+.music-credit a { color:var(--sea); }
+.music-button { font-size:24px; }
+.music-button[aria-pressed="false"] { opacity:.55; text-decoration:line-through; }
+.route-note {font-size:11px;line-height:1.4;color:var(--ink-soft);margin:5px 0 10px;}
+#route-attribution {display:none;position:fixed;bottom:2px;left:6px;z-index:15;font-size:8px;background:rgba(247,242,231,.9);padding:2px 5px;border-radius:3px;color:var(--ink);}
+#route-attribution.visible {display:block;}
+#route-attribution a {color:inherit;}
+body:has(.overlay.visible) #route-attribution {display:none;}
 
 body:has(.overlay.visible) #hud,
 body:has(.overlay.visible) #mobile-controls { visibility: hidden; }
@@ -357,6 +369,9 @@ kbd { min-width: 23px; padding: 3px 5px; border: 1px solid rgba(23, 42, 49, 0.22
   .menu-panel .route-picker {grid-column:2;grid-row:3;}
   .menu-panel .controls-summary {grid-column:2;grid-row:4;}
   .menu-panel .primary-cta {grid-column:2;grid-row:5;}
+  .menu-panel .music-option {grid-column:2;grid-row:6;}
+  .menu-panel .music-credit {grid-column:1;grid-row:6;align-self:center;}
+  .menu-panel .route-note {grid-column:1 / -1;grid-row:7;}
 }
 
 @media (max-width: 680px) and (orientation: portrait) {

@@ -1,5 +1,16 @@
 # Memoria del progetto
 
+## Richiesta corrente · 26 settembre 2026
+
+- Utente conferma giocabilità su cellulare; audio motore talvolta assente. Correzioni audio e musica implementate e testate localmente, non pubblicate.
+- Musica scelta: Carefree, Kevin MacLeod, CC BY 4.0; crediti menu e public/audio/CREDITS.md. Pulsante separato musica, mute generale invariato.
+- Il percorso Santa Maria Novella–Palazzo Vecchio è SUPERATO. Partenza confermata: Duomo / Santa Maria del Fiore, sulla strada carrabile adiacente; percorso circa 2 km verso e lungo l'Arno, senza zone pedonali.
+- Richiesta forte: scenario fedele alla realtà, marciapiedi con persone, attraversamenti e semafori reali; Vespa si ferma al rosso e lascia passare i pedoni.
+- Percorso acquisito: Proconsolo → Ghibellina → Giovine Italia → Piazza Piave → Pecori Giraldi → Tempio, 2003,4 m. Dati e attribuzione in src/data/florence-route.json; piano e verifiche ancora necessarie in FIRENZE_PLAN.md.
+- Firenze è ora integrato nel menu: 2003,4 m, curve geografiche, 817 impronte/parti di edifici OSM, Arno, 14 attraversamenti raggruppati e fermate assistite. Record separati dal circuito cittadino. Nessun ostacolo casuale in Firenze.
+- Non presentare le facciate procedurali come repliche fotografiche: altezze mancanti, larghezze stradali e tempi semaforici sono ricostruiti. Il dataset semaforico indica impianti, non linee d'arresto o tempi. La verifica preliminare delle aree pedonali non certifica ZTL/cantieri.
+- L'utente autorizza completamento del tratto Firenze e pubblicazione. Seguire RELEASE_CHECKLIST.md e registrare l'esito effettivo, senza confondere build locale e sito pubblico.
+
 ## Preferenze confermate
 
 - Italiano, comunicazione non tecnica; aggiornare memoria e avanzamento prima di commit/push.

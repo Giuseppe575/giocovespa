@@ -1,4 +1,17 @@
-# Checklist pubblicazione · 25 settembre 2026
+# Checklist pubblicazione · 26 settembre 2026
+
+## Release Firenze e audio
+
+- [x] 51 test automatici e TypeScript superati.
+- [x] Giro Firenze completo, senza abbreviazioni: 2003,4 m, 14 attraversamenti, arrivo con velocità/audio motore a zero, nessun errore JS.
+- [x] Fonti, licenze musica/dati, limiti della ricostruzione e memoria/avanzamento aggiornati.
+- [x] Regressione cittadina (giro abbreviato solo nel test), arrivo, riavvio, menu e mobile portrait/landscape; nessun errore JS o overflow.
+- [x] Audio: musica, recupero da sospensione, motore presente con musica spenta, mute e scheda nascosta/visibile.
+- [x] Build definitiva: index-DSWV_2Ub.js, index-c1vRUxT9.css; avviso non bloccante bundle >500 kB.
+- [ ] Commit/push e pubblicazione Pages; verifica HTTP e browser pubblico.
+- Ripristino previsto: revert del nuovo merge di release su master; base pubblica precedente 9fb1648. Nessuna migrazione o segreto, dati utente locali conservati. Non includere palazzigrafica.png.
+
+## Archivio release precedente · 25 settembre
 
 ## Prima del deploy
 

@@ -54,6 +54,7 @@ export type World = {
 };
 
 export type ScoreSystem = {
+  raceDistance: number;
   elapsedSeconds: number;
   lapCompleted: boolean;
   bestLapSeconds: number | null;
