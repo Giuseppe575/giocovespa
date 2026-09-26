@@ -2,7 +2,7 @@
 
 Aggiornamento: 26 settembre 2026.
 
-## Release pronta · audio e Firenze (in attesa di deploy)
+## Release pubblicata · audio e Firenze
 
 - L'utente conferma che la release online funziona sul proprio cellulare; segnala audio motore intermittente.
 - Corretta la gestione di AudioContext sospeso/interrotto, ripresa tramite gesto e rientro nella scheda, timeout/retry senza mute permanente. Tono motore più basso e pulsazione meno profonda.
@@ -14,6 +14,7 @@ Aggiornamento: 26 settembre 2026.
 - Giro completo locale non abbreviato su Chromium touch: 2003,4 m, 14 fermate servite, FINISHED, velocità 0 e gain motore 0; nessun errore JavaScript. Build e pubblicazione in preparazione.
 - Regressione cittadina superata con giro abbreviato esclusivamente nel test: arrivo, record, timer congelato, riavvio e ritorno al menu. Firenze in verticale 390×844: partenza touch, nessun overflow. Audio ricontrollato: ripresa dopo sospensione, musica indipendente e mute funzionanti, segnale motore rilevato.
 - Build definitiva completata: index-DSWV_2Ub.js e index-c1vRUxT9.css. Resta avviso non bloccante >500 kB. Mobile fisico/Safari da riverificare; nessuna dichiarazione di fotorealismo.
+- Pubblicata il 26 settembre 2026: codice 20684d6, PR #31, merge e042e33. Pages built senza errori; smoke pubblico touch: bundle corretto, fermata a 0 km/h, ripartenza e avanzamento su 2003 m, musica disattivabile; nessun errore JS o richiesta fallita.
 
 ## Completato
 
@@ -36,7 +37,7 @@ Aggiornamento: 26 settembre 2026.
 - Multitouch browser emulato: accelerazione + sterzo contemporanei, rilascio, freno/cancellazione e pressione/rilascio turbo.
 - La verifica automatizzata del 25 settembre era soltanto emulata; il 26 settembre l'utente conferma giocabilità sul proprio telefono, con il problema audio descritto sopra. Modello e browser non comunicati.
 
-## Pubblicazione
+## Pubblicazione precedente (archivio)
 
 Release pubblicata tramite PR #30, integrata in master il 25 settembre 2026 alle 22:53 CEST. GitHub Pages usa master:/docs.
 https://giuseppe575.github.io/giocovespa/

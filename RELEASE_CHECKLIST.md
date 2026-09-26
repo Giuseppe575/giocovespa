@@ -8,7 +8,8 @@
 - [x] Regressione cittadina (giro abbreviato solo nel test), arrivo, riavvio, menu e mobile portrait/landscape; nessun errore JS o overflow.
 - [x] Audio: musica, recupero da sospensione, motore presente con musica spenta, mute e scheda nascosta/visibile.
 - [x] Build definitiva: index-DSWV_2Ub.js, index-c1vRUxT9.css; avviso non bloccante bundle >500 kB.
-- [ ] Commit/push e pubblicazione Pages; verifica HTTP e browser pubblico.
+- [x] Commit 20684d6, push, PR #31 integrata (e042e33); Pages built senza errori.
+- [x] Browser pubblico touch: hash index-DSWV_2Ub.js, fermata 0 km/h, ripartenza 30 km/h e avanzamento su 2003 m, musica off; nessun errore JS/richiesta fallita.
 - Ripristino previsto: revert del nuovo merge di release su master; base pubblica precedente 9fb1648. Nessuna migrazione o segreto, dati utente locali conservati. Non includere palazzigrafica.png.
 
 ## Archivio release precedente · 25 settembre

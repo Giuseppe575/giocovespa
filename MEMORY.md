@@ -2,7 +2,7 @@
 
 ## Richiesta corrente · 26 settembre 2026
 
-- Utente conferma giocabilità su cellulare; audio motore talvolta assente. Correzioni audio e musica implementate e testate localmente, non pubblicate.
+- Utente conferma giocabilità su cellulare; audio motore talvolta assente. Correzioni audio e musica pubblicate con Firenze il 26 settembre 2026; da riprovare sul telefono fisico.
 - Musica scelta: Carefree, Kevin MacLeod, CC BY 4.0; crediti menu e public/audio/CREDITS.md. Pulsante separato musica, mute generale invariato.
 - Il percorso Santa Maria Novella–Palazzo Vecchio è SUPERATO. Partenza confermata: Duomo / Santa Maria del Fiore, sulla strada carrabile adiacente; percorso circa 2 km verso e lungo l'Arno, senza zone pedonali.
 - Richiesta forte: scenario fedele alla realtà, marciapiedi con persone, attraversamenti e semafori reali; Vespa si ferma al rosso e lascia passare i pedoni.
@@ -42,4 +42,4 @@
 
 ## Ultima consegna verificata
 
-25 settembre 2026: PR #30 integrata e Pages pubblicato. Codice 0f2083e, merge fc0aa65; asset pubblico index-B_mMw4D7.js. Smoke test sulla pagina pubblica riuscito anche con input touch emulato (Vespa grigia, lungomare, gara da 1800 m). Vedere STATUS.md e RELEASE_CHECKLIST.md per test e limiti.
+26 settembre 2026: PR #31 integrata e Pages pubblicato. Codice 20684d6, merge e042e33; asset pubblico index-DSWV_2Ub.js. 51 test, TypeScript e build superati; giro completo Firenze 2003,4 m con 14 fermate e arrivo silenzioso. Smoke pubblico mobile touch: arresto/ripartenza e musica off, nessun errore JS o richiesta fallita. Vedere STATUS.md e RELEASE_CHECKLIST.md per test e limiti. La precedente release PR #30 resta il riferimento di ripristino (master 9fb1648).
