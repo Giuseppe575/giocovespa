@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { projectRoadPoint, streetLayout } from "../core/road-path";
+import { projectRoadPoint, streetLayout, isFlorence } from "../core/road-path";
+import {FlorenceScenery} from "./florence-scenery";
 import { resolveCircuitPosition, type DistrictId } from "../core/circuit";
 import { surfaces } from "./surfaces";
 import { createDistrictScenery } from "./district-scenery";
@@ -25,8 +26,9 @@ export class CircuitRenderer {
   private time=0;
   private finish = createFinishLine();
   private finishDistance = RACE_DISTANCE;
+  private florence:FlorenceScenery | null=null;
 
-  constructor(scene: THREE.Scene) {
+  constructor(private scene: THREE.Scene) {
     scene.add(this.finish);
     this.ribbon(scene,-5.1,5.1,.065,surfaces().asphalt);
     for(const side of [-1,1]) {
@@ -64,14 +66,16 @@ export class CircuitRenderer {
     scene.add(mesh);this.ribbons.push({mesh,left,right,height});
   }
 
-  reset(distance = 0) {
-    this.finishDistance = distance + RACE_DISTANCE;
+  reset(distance = 0,length=RACE_DISTANCE) {
+    this.finishDistance = distance + length;
+    if(isFlorence()&&!this.florence)this.florence=new FlorenceScenery(this.scene);
     this.scenery.forEach((slot,i)=>{slot.index=Math.floor(distance/BLOCK)+Math.floor(i/2)-2;slot.key="";});
     this.pedestrians.forEach((p,i)=>{p.s=distance+i*20;});
     this.update(distance);
   }
 
   update(distance:number,dt=0) {
+    this.florence?.update(distance,isFlorence());
     this.finish.visible = this.finishDistance - distance < 210;
     if (this.finish.visible) {
       const point = projectRoadPoint(this.finishDistance, 0, distance);
@@ -109,6 +113,8 @@ export class CircuitRenderer {
     this.lines.instanceMatrix.needsUpdate=true;
 
     for(const slot of this.scenery) {
+      slot.root.visible=!isFlorence();
+      if(isFlorence())continue;
       while(slot.index*BLOCK-distance < -25) slot.index+=26;
       const s=slot.index*BLOCK;
       const district=resolveCircuitPosition(Math.max(0,s)).district.id;

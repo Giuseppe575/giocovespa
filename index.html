@@ -44,6 +44,7 @@
             <span id="highscore-value" class="hud-value">0</span>
           </div>
           <button id="mute-btn" class="icon-button audio-button" type="button" aria-label="Disattiva audio" aria-pressed="false"><span class="visually-hidden">Audio</span></button>
+          <button id="music-btn" class="icon-button music-button" type="button" aria-label="Disattiva musica" aria-pressed="true">♫</button>
         </div>
       </div>
 
@@ -87,8 +88,8 @@
         <div class="menu-cards">
           <div class="mission-card">
             <span class="card-kicker">Il tuo circuito</span>
-            <strong>Un giro · 1800 m</strong>
-            <span>Quattro quartieri, un traguardo. Batti il tuo tempo!</span>
+            <strong id="route-summary">Firenze · 2003 m</strong>
+            <span id="route-description">Dal Duomo all'Arno, con fermate e attraversamenti.</span>
           </div>
           <div class="record-card">
             <span class="card-kicker">Il tuo record</span>
@@ -104,6 +105,7 @@
         </fieldset>
         <label class="route-picker" for="route-select">Da dove partiamo?
           <select id="route-select">
+            <option value="florence">Firenze · dal Duomo all'Arno · 2 km</option>
             <option value="0">Centro storico · bar e botteghe</option>
             <option value="120">Piazza · chiesa e fontana</option>
             <option value="420">Lungomare · spiaggia e palme</option>
@@ -111,6 +113,7 @@
             <option value="1300">Collina · ville e cipressi</option>
           </select>
         </label>
+        <p class="route-note">Firenze: tracciato ed edifici da dati geografici reali. Facciate e altezze mancanti ricostruite; semafori con tempi di gioco. Frenata assistita ai passaggi pedonali.</p>
         <div class="controls-summary" aria-label="Comandi">
           <span><kbd>A</kbd><kbd>D</kbd> Sterza</span>
           <span><kbd>W</kbd><kbd>S</kbd> Ritmo</span>
@@ -118,6 +121,8 @@
         </div>
 
         <button id="play-btn" class="primary-cta" type="button"><span>Parti</span><span aria-hidden="true">→</span></button>
+        <label class="music-option"><input id="music-enabled" type="checkbox" checked /> Musica di accompagnamento</label>
+        <p class="music-credit">“Carefree” — <a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1400037" target="_blank" rel="noopener">Kevin MacLeod</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
         <p class="note">Su mobile usa il dispositivo in orizzontale per una guida migliore.</p>
       </div>
     </div>
@@ -145,5 +150,6 @@
     </div>
 
     <script type="module" src="./src/main.ts"></script>
+    <div id="route-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · Comune di Firenze, CC BY 4.0 · Ricostruzione 3D, non navigazione</div>
   </body>
 </html>

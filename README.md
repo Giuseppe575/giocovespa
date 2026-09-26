@@ -1,17 +1,22 @@
 # Vespa City Ride
 
-Un giro di 1800 m attraverso centro storico, lungomare, mercato e collina: curve, traffico, monete e turbo, fino a FINISH.
+Due esperienze: Firenze–Arno da 2003,4 m su tracciato geografico reale, oppure il circuito cittadino da 1800 m attraverso centro storico, lungomare, mercato e collina.
 
 [Gioca online](https://giuseppe575.github.io/giocovespa/)
 
 ## Come giocare
 
-Scegli la Vespa rossa, bianca o grigia e il quartiere di partenza. Completa il giro evitando gli ostacoli. All'arrivo il mezzo si ferma: punteggio, tempo e record vengono salvati nel browser. Il traguardo si trova sempre a 1800 m dalla partenza scelta.
+Scegli la Vespa rossa, bianca o grigia e il percorso. All'arrivo il mezzo si ferma: punteggio, tempo e record vengono salvati nel browser, separatamente per Firenze e circuito cittadino.
+
+Firenze parte da Via del Proconsolo, accanto al Duomo, attraversa Via Ghibellina, Giovine Italia e Piazza Piave, proseguendo sui lungarni Pecori Giraldi e del Tempio. Frenata automatica prima di semafori/strisce: attendi i pedoni, poi riparti. Il tempo include le attese. Non ci sono ostacoli casuali in questa modalità. Il circuito cittadino conserva traffico e difficoltà progressiva.
+
+Geometria stradale, impronte degli edifici, sponde e attraversamenti derivano da OpenStreetMap; tre impianti semaforici dai dati comunali. Facciate, altezze mancanti, larghezze e fasi semaforiche sono ricostruzioni di gioco: non una scansione fotografica né un navigatore.
 
 - Tastiera: A/D o frecce per sterzare; W/S o frecce su/giù per accelerare/frenare; Spazio per turbo carico.
 - Mobile: trascina sulla strada per sterzare e tieni premuti i pedali. Sterzo e acceleratore funzionano anche con due dita. Tocca Turbo quando carico.
 - Orizzontale consigliato; menu e risultati funzionano anche in verticale.
 - Nascondere la scheda sospende la corsa e silenzia il motore.
+- Musica Carefree di Kevin MacLeod (CC BY 4.0), disattivabile separatamente; mute generale per tutto l'audio. Un tocco riattiva l'audio dopo un'interruzione del browser.
 
 ## Sviluppo
 
