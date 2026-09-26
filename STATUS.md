@@ -2,9 +2,10 @@
 
 Aggiornamento: 26 settembre 2026.
 
-## Revisione visiva successiva · pubblicazione richiesta
+## Revisione Firenze · pubblicata
 
-- L'utente richiede ora la pubblicazione per provare su cellulare; codice verificato nel commit 3ee4390. Deploy in corso, esito pubblico ancora da confermare.
+- Pubblicata su richiesta dell'utente per prova mobile: codice 3ee4390, PR #32, merge 6d6547a. GitHub Pages completato con successo (run 36260880233).
+- Prova sul sito pubblico in Chromium touch 844×390 e 390×844: bundle index-Do4UDAeM.js confermato, partenza Firenze, avanzamento da 12 a 93 m, comando musica e nessun overflow; nessun errore JavaScript, richiesta fallita o risposta HTTP di errore. Telefono fisico da provare dall'utente.
 
 - Audio/musica approvati dall'utente e lasciati invariati.
 - Subagente di ricognizione ha consultato Google Earth e fonti primarie; documentato il distacco reale strada–acqua (circa30–86m). Nessuna immagine proprietaria distribuita.
@@ -15,7 +16,7 @@ Aggiornamento: 26 settembre 2026.
 - Su nuova richiesta: tutte le 14 strisce restano, pedoni a passaggi alterni, esclusi anche due punti senza un percorso libero dalle facciate: 5 gruppi effettivi. Primo passaggio libero. I rossi rimangono rispettati, con attesa breve di 2 secondi se non ci sono pedoni: 7 fermate complessive invece di 14. Record Firenze v2 separati dalle vecchie regole.
 - Verifica finale locale: 65 test, TypeScript e build superati; prova Chromium touch conferma 14 strisce, 5 gruppi sicuri, nessuno stop per pedoni invisibili, partenza e avanzamento senza errori JavaScript. Bundle index-Do4UDAeM.js; avviso non bloccante >500 kB.
 - Prima dell'ultima esclusione dei due attraversamenti senza spazio: giro Firenze completo non abbreviato, 2003,4 m, FINISHED, velocità e gate motore a zero, nessun errore JavaScript. Audio/ripresa/mute e regressione cittadina mobile verificati. L'ultima esclusione è coperta da test mirati, non da un secondo giro completo.
-- Schermate locali del lungarno controllate; ancora da approvare visivamente e provare su telefono fisico. Non è fotogrammetria né una replica fotografica edificio per edificio. Questa revisione non è ancora pubblicata.
+- Schermate locali del lungarno controllate; ancora da approvare visivamente e provare su telefono fisico. Non è fotogrammetria né una replica fotografica edificio per edificio. Revisione ora online.
 
 ## Release pubblicata · audio e Firenze
 
