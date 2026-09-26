@@ -1,5 +1,16 @@
 # Checklist pubblicazione · 26 settembre 2026
 
+## Revisione Firenze: scenario, traffico e meno fermate
+
+- [x] Pubblicazione richiesta dall'utente per prova su cellulare.
+- [x] Codice 3ee4390: 65 test e TypeScript superati; build index-Do4UDAeM.js.
+- [x] Prova touch locale: 14 strisce conservate, 5 gruppi di pedoni sicuri e 7 fermate complessive; nessun errore JavaScript.
+- [x] Giro completo verificato prima dell'ultima esclusione di due passaggi senza spazio; esclusione verificata con test mirati.
+- [x] Audio invariato, licenze CC0 e provenienza dati registrate; file personale palazzigrafica.png escluso.
+- [ ] Push, integrazione su master e completamento Pages.
+- [ ] Conferma bundle e asset pubblici, partenza e comandi in browser touch.
+- Ripristino: revert del merge di questa revisione se caricamento o comandi fondamentali falliscono; precedente release PR31. Nessuna migrazione. Nessuna telemetria centralizzata: verifica puntuale, non monitoraggio continuativo.
+
 ## Release Firenze e audio
 
 - [x] 51 test automatici e TypeScript superati.

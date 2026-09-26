@@ -2,7 +2,9 @@
 
 Aggiornamento: 26 settembre 2026.
 
-## Revisione visiva successiva · anteprima locale non pubblicata
+## Revisione visiva successiva · pubblicazione richiesta
+
+- L'utente richiede ora la pubblicazione per provare su cellulare; codice verificato nel commit 3ee4390. Deploy in corso, esito pubblico ancora da confermare.
 
 - Audio/musica approvati dall'utente e lasciati invariati.
 - Subagente di ricognizione ha consultato Google Earth e fonti primarie; documentato il distacco reale strada–acqua (circa30–86m). Nessuna immagine proprietaria distribuita.
