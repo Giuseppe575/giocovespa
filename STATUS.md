@@ -2,6 +2,21 @@
 
 Aggiornamento: 26 settembre 2026.
 
+## Revisione visiva successiva · pubblicazione richiesta
+
+- L'utente richiede ora la pubblicazione per provare su cellulare; codice verificato nel commit 3ee4390. Deploy in corso, esito pubblico ancora da confermare.
+
+- Audio/musica approvati dall'utente e lasciati invariati.
+- Subagente di ricognizione ha consultato Google Earth e fonti primarie; documentato il distacco reale strada–acqua (circa30–86m). Nessuna immagine proprietaria distribuita.
+- Aggiunte superfici fotografiche CC0, finestre/soglie/persiane tridimensionali, terreno ritagliato lungo Arno e acqua ribassata, verde e fogliame, ponte San Niccolò e pescaia da coordinate OSM, 49 impronte di edifici della sponda sud.
+- Eliminata foschia troppo vicina a Firenze e introdotta visuale più alta sul lungarno, senza spostare il fiume rispetto alla rotta.
+- Pedoni: verifica contro impronte degli edifici e margine del corpo; attraversamento solo su segmenti liberi, niente persone dentro facciate.
+- Traffico rado: carrozzerie arrotondate, ruote animate, stop prima delle strisce e distanza dalla Vespa; gestione coda per evitare blocchi alle fermate.
+- Su nuova richiesta: tutte le 14 strisce restano, pedoni a passaggi alterni, esclusi anche due punti senza un percorso libero dalle facciate: 5 gruppi effettivi. Primo passaggio libero. I rossi rimangono rispettati, con attesa breve di 2 secondi se non ci sono pedoni: 7 fermate complessive invece di 14. Record Firenze v2 separati dalle vecchie regole.
+- Verifica finale locale: 65 test, TypeScript e build superati; prova Chromium touch conferma 14 strisce, 5 gruppi sicuri, nessuno stop per pedoni invisibili, partenza e avanzamento senza errori JavaScript. Bundle index-Do4UDAeM.js; avviso non bloccante >500 kB.
+- Prima dell'ultima esclusione dei due attraversamenti senza spazio: giro Firenze completo non abbreviato, 2003,4 m, FINISHED, velocità e gate motore a zero, nessun errore JavaScript. Audio/ripresa/mute e regressione cittadina mobile verificati. L'ultima esclusione è coperta da test mirati, non da un secondo giro completo.
+- Schermate locali del lungarno controllate; ancora da approvare visivamente e provare su telefono fisico. Non è fotogrammetria né una replica fotografica edificio per edificio. Questa revisione non è ancora pubblicata.
+
 ## Release pubblicata · audio e Firenze
 
 - L'utente conferma che la release online funziona sul proprio cellulare; segnala audio motore intermittente.

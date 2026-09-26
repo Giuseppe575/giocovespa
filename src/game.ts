@@ -7,7 +7,9 @@ import { RaceProgress, RACE_DISTANCE, BEST_LAP_KEY, parseBestLap } from "./core/
 import { projectRoadPoint, sampleRoad, streetLayout, setRoadRoute, isFlorence } from "./core/road-path";
 import { FLORENCE_LENGTH, florenceStreet } from "./core/florence";
 import { TrafficRules } from "./core/traffic-rules";
+import {safeCrossing} from './core/florence-space';
 import { TrafficCrossings } from "./visuals/traffic-crossings";
+import {FlorenceTraffic} from './visuals/florence-traffic';
 import { resolveCircuitPosition } from "./core/circuit";
 import { CircuitRenderer } from "./visuals/circuit-renderer";
 import { enhancePlayerModel } from "./visuals/player-model";
@@ -125,6 +127,7 @@ let curveDistance = 0;
 let race = new RaceProgress();
 const trafficRules = new TrafficRules();
 let crossingVisuals: TrafficCrossings;
+let florenceTraffic: FlorenceTraffic;
 let bestLapKey = BEST_LAP_KEY;
 let highScoreKey = PERSISTENCE_KEYS.HIGH_SCORE;
 let resultTimer: ReturnType<typeof setTimeout> | undefined;
@@ -441,6 +444,7 @@ export async function initGame() {
   const streetLights: THREE.Group[] = [];
   circuitRenderer = new CircuitRenderer(scene);
   crossingVisuals = new TrafficCrossings(scene);
+  florenceTraffic = new FlorenceTraffic(scene);
   setupAtmosphere(scene, renderer);
 
   const vehiclesPool: THREE.Group[] = [];
@@ -634,10 +638,11 @@ function resetGameState() {
   const selection=(document.getElementById("route-select") as HTMLSelectElement | null)?.value ?? "0";
   setRoadRoute(selection==="florence"?"florence":"city");
   race = new RaceProgress(isFlorence()?FLORENCE_LENGTH:RACE_DISTANCE);
-  trafficRules.reset();
+  trafficRules.reset(undefined,true,c=>safeCrossing(c.at,streetLayout(c.at).halfWidth)!==null);
+  florenceTraffic?.reset();
   scoreSystem.raceDistance = race.length;
-  bestLapKey = isFlorence()?`${BEST_LAP_KEY}_florence_v1`:BEST_LAP_KEY;
-  highScoreKey = isFlorence()?`${PERSISTENCE_KEYS.HIGH_SCORE}_florence_v1`:PERSISTENCE_KEYS.HIGH_SCORE;
+  bestLapKey = isFlorence()?`${BEST_LAP_KEY}_florence_v2`:BEST_LAP_KEY;
+  highScoreKey = isFlorence()?`${PERSISTENCE_KEYS.HIGH_SCORE}_florence_v2`:PERSISTENCE_KEYS.HIGH_SCORE;
   scoreSystem.elapsedSeconds = 0;
   scoreSystem.lapCompleted = false;
   scoreSystem.newBestLap = false;
@@ -668,6 +673,7 @@ function resetGameState() {
   districtId = "";
   circuitRenderer?.reset(curveDistance,race.length);
   crossingVisuals?.update(curveDistance,trafficRules,isFlorence());
+  florenceTraffic?.update(curveDistance,0,trafficRules,isFlorence());
   const routeLabel = document.getElementById("district-value");
   if (routeLabel) routeLabel.textContent = isFlorence()?florenceStreet(0):resolveCircuitPosition(curveDistance).district.name;
   document.getElementById("route-attribution")?.classList.toggle("visible",isFlorence());
@@ -838,7 +844,7 @@ function animate() {
 
 function updatePlayer(dt: number) {
   const p = world.player;
-  if(isFlorence())trafficRules.update(curveDistance,p.speed,dt);
+  if(isFlorence())trafficRules.update(curveDistance,p.speed,dt,florenceTraffic.isQueued(curveDistance,p.laneX,trafficRules));
   const difficulty = getDifficultyProfile(
     scoreSystem.distance,
     GAME_CONFIG.baseSpeed,
@@ -896,7 +902,7 @@ function updatePlayer(dt: number) {
 
   p.speed = lerp(p.speed, p.targetSpeed, 0.9 * dt);
   if(isFlorence()) {
-    const speed=trafficRules.limitSpeed(curveDistance,p.speed,dt);
+    const speed=florenceTraffic.limitPlayerSpeed(curveDistance,p.laneX,trafficRules.limitSpeed(curveDistance,p.speed,dt),dt);
     if(speed<p.speed){p.targetSpeed=Math.min(p.targetSpeed,Math.max(speed,p.minSpeed));p.turboActive=false;turboTimeLeft=0;}
     p.speed=speed;
   }
@@ -959,6 +965,7 @@ function updateObstacles(dt: number) {
   world.trackDistance = curveDistance;
   circuitRenderer.update(curveDistance, dt);
   crossingVisuals.update(curveDistance,trafficRules,isFlorence());
+  florenceTraffic.update(curveDistance,dt,trafficRules,isFlorence());
   const circuitPosition = resolveCircuitPosition(curveDistance);
   const routeLabel = document.getElementById("district-value");
   const street = isFlorence()?florenceStreet(curveDistance):circuitPosition.district.name;
@@ -1241,9 +1248,13 @@ function updateCamera(dt: number) {
   // dynamic camera distance
   cameraBaseOffset.z = 7.4 + speedFactor * 2.5;
   cameraBaseOffset.y = 3.2 + speedFactor * 0.7;
+  // A higher riverside chase view reveals the actual recessed Arno beyond the gardens.
+  const riversideView=isFlorence()?Math.max(0,Math.min(1,(curveDistance-1360)/140)):0;
+  cameraBaseOffset.y+=riversideView*7;
+  cameraBaseOffset.z+=riversideView*7;
 
   cameraTargetPos.set(
-    p.mesh.position.x * 0.35,
+    p.mesh.position.x * 0.35-riversideView*3,
     p.mesh.position.y + cameraBaseOffset.y,
     p.mesh.position.z + cameraBaseOffset.z
   );
@@ -1262,7 +1273,7 @@ function updateCamera(dt: number) {
   lerpVec3(cam.position, cameraTargetPos, 5 * dt);
 
   cameraLookAt.set(
-    p.mesh.position.x * .5 + projectRoadPoint(curveDistance + 20, 0, curveDistance).x * .45,
+    p.mesh.position.x * .5 + projectRoadPoint(curveDistance + 20, 0, curveDistance).x * .45+riversideView*4,
     p.mesh.position.y + 1.5,
     p.mesh.position.z - 10
   );
