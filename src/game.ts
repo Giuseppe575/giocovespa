@@ -5,7 +5,7 @@ import { AudioRecovery } from "./core/audio-recovery";
 import { BackgroundMusic } from "./audio/music";
 import { RaceProgress, RACE_DISTANCE, BEST_LAP_KEY, parseBestLap } from "./core/race";
 import { projectRoadPoint, sampleRoad, streetLayout, setRoadRoute, isFlorence } from "./core/road-path";
-import { FLORENCE_LENGTH, florenceStreet } from "./core/florence";
+import { FLORENCE_LENGTH, FLORENCE_QUIET_CROSSINGS, florenceStreet } from "./core/florence";
 import { TrafficRules } from "./core/traffic-rules";
 import {safeCrossing} from './core/florence-space';
 import { TrafficCrossings } from "./visuals/traffic-crossings";
@@ -638,7 +638,7 @@ function resetGameState() {
   const selection=(document.getElementById("route-select") as HTMLSelectElement | null)?.value ?? "0";
   setRoadRoute(selection==="florence"?"florence":"city");
   race = new RaceProgress(isFlorence()?FLORENCE_LENGTH:RACE_DISTANCE);
-  trafficRules.reset(undefined,true,c=>safeCrossing(c.at,streetLayout(c.at).halfWidth)!==null);
+  trafficRules.reset(undefined,true,c=>!FLORENCE_QUIET_CROSSINGS.has(c.id)&&safeCrossing(c.at,streetLayout(c.at).halfWidth,s=>streetLayout(s).centerOffset)!==null);
   florenceTraffic?.reset();
   scoreSystem.raceDistance = race.length;
   bestLapKey = isFlorence()?`${BEST_LAP_KEY}_florence_v2`:BEST_LAP_KEY;
@@ -923,10 +923,11 @@ function updatePlayer(dt: number) {
   if (input.left) lateral -= 1;
   if (input.right) lateral += 1;
 
-  const maxX = streetLayout(curveDistance).laneSpacing + 0.4;
+  const section=streetLayout(curveDistance);
+  const maxX = isFlorence()?Math.max(0,section.halfWidth-.65):section.laneSpacing + 0.4;
   p.laneX += lateral * p.lateralSpeed * dt;
   p.laneX = clamp(p.laneX, -maxX, maxX);
-  p.mesh.position.x = p.laneX;
+  p.mesh.position.x = p.laneX+section.centerOffset;
 
   // Lean effect
   const bend = sampleRoad(curveDistance + 5).heading - sampleRoad(curveDistance).heading;

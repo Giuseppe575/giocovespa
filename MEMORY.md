@@ -1,5 +1,14 @@
 # Memoria del progetto
 
+## Correzioni da fotografie · 27 settembre 2026
+
+- L'utente conferma di MANTENERE il percorso Pecori Giraldi–del Tempio. Le sue foto Acciaiuoli/Corsini sono riferimenti di confronto, non autorizzano a cambiare itinerario o collocare Ponte Vecchio davanti all'arrivo.
+- Problemi segnalati: facciate sulla carreggiata, marciapiedi invisibili, due file di auto nelle vie strette, torre confusa con chiesa. Correzione locale: sezione stradale adattata allo spazio fra impronte OSM, marciapiedi su entrambi i lati e traffico in fila unica nel centro; allargamento progressivo verso i viali.
+- Nessuno spostamento di edifici, Arno o percorso. Larghezze/marciapiedi sono ricostruzioni con controllo di ingombro, NON misure topografiche. Viali ancora semplificati; non promettere corrispondenza esatta di ogni corsia/facciata/cantiere.
+- Torre della Zecca: MUS.E conferma altezza 25 m, sommità senza merlatura, archi murati sul lato città. Rimossi merli inventati, aggiunti riferimenti agli archi e copertura piatta; non è una chiesa né sostituisce il Duomo.
+- Aggiunti 10 percorsi pedonali/ciclabili del lungarno da OSM acquisito il 26/09; piante decorative escluse da questi percorsi. Dimensioni/quote ricostruite, non rilevate. Foto Google dell'utente NON distribuite come texture.
+- Conservato il programma con 5 gruppi di pedoni e 7 fermate; coda singola fino a quattro auto gestita senza obbligare la Vespa a raggiungere la prima auto. Audio/musica invariati. Verifiche finali superate: 69 test, TypeScript/build, sette schermate touch e giro completo non abbreviato 2003,4 m, FINISHED, velocità/motore a zero, nessun errore JS. Queste nuove correzioni non sono ancora online (pubblico PR32).
+
 ## Richiesta corrente · 26 settembre 2026
 
 - Dopo la release PR31 l'utente conferma audio e musica funzionanti. Non modificarli in questa fase.

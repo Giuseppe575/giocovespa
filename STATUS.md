@@ -1,6 +1,18 @@
 # Avanzamento · Vespa City Ride
 
-Aggiornamento: 26 settembre 2026.
+Aggiornamento: 27 settembre 2026.
+
+## Correzioni da fotografie · verificate in locale
+
+- Percorso attuale confermato dall'utente: nessuna deviazione verso Corsini/Ponte Vecchio.
+- Sezione del centro adattata alle impronte dei palazzi: spazio riservato ai marciapiedi, carreggiata più stretta/asimmetrica dove serve, nessuna linea centrale nelle vie a singola fila. Auto in fila unica e allargamento progressivo; aggiornati sterzo, pedoni e monete alla stessa geometria.
+- Pavimentazione meno chiara e giunti in scala; cordoli ribassati. Foto di confronto alle progressive 105, 173, 445, 784, 1363, 1460 e 1958 m; primo controllo mobile senza errori JS.
+- Torre della Zecca corretta secondo MUS.E: 25 m mantenuti, merlatura rimossa, archi murati e copertura piatta ricostruiti. Non una chiesa. Dettagli non misurati restano approssimati.
+- Dieci tracciati OSM di percorsi pedonali/ciclabili nel verde del lungarno, senza importare immagini Google. Coordinate in src/data/florence-riverside-paths.json; larghezze e quote stimate.
+- 5 gruppi pedonali / 7 stop conservati. Coda singola di quattro auto gestita. Audio invariato.
+- Verifica finale: 69 test, TypeScript e build superati, bundle index-Z0e-__uS.js. Giro completo Chromium touch non abbreviato: 2003,4 m, FINISHED, velocità 0, gate motore 0, tutti gli attraversamenti risolti e nessun errore JavaScript. Nessun blocco nella coda a quattro auto.
+- Confronto visivo finale alle sette progressive, con traffico in fila unica nel centro e marciapiedi leggibili sui due lati. Una prima cattura è scaduta durante build e prove concorrenti; ripetuta a build conclusa con esito positivo. Non è una verifica su telefono fisico.
+- NON ancora pubblicato; sito pubblico rimane PR32. Rimangono facciate e vegetazione generiche, quote/larghezze stimate e viali semplificati: non dichiarare una replica fotografica completa.
 
 ## Revisione Firenze · pubblicata
 

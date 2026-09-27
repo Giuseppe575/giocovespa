@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {surfaces} from './surfaces';
 let cache:ReturnType<typeof create>|undefined;
 export function florenceMaterials(){return cache??=create();}
 function create(){
@@ -13,5 +14,7 @@ function create(){
  const asphalt=new THREE.MeshStandardMaterial({color:0xb6b4ac,map:texture('aerial_asphalt_01','Diffuse',true),normalMap:texture('aerial_asphalt_01','nor_gl'),normalScale:new THREE.Vector2(.4,.4),roughness:.9});
  const walls=[0xcfb791,0xb9b09d,0xd9c7a6,0xbda287].map(color=>new THREE.MeshStandardMaterial({color,map:plaster,normalMap:plasterNormal,normalScale:new THREE.Vector2(.3,.3),roughness:.92,side:THREE.DoubleSide}));
  const grass=new THREE.MeshStandardMaterial({map:texture('grass_path_2','Diffuse',true),color:0x788363,roughness:1});
- return {stone,asphalt,walls,grass,trim:new THREE.MeshStandardMaterial({color:0xb3a28c,roughness:.86}),glass:new THREE.MeshStandardMaterial({color:0x293736,metalness:.18,roughness:.3}),wood:new THREE.MeshStandardMaterial({color:0x38443b,roughness:.83})};
+ const paving=surfaces().pavement.map!.clone();paving.repeat.set(1,1);
+ const pavement=new THREE.MeshStandardMaterial({color:0xa8aaa6,map:paving,bumpMap:paving,bumpScale:.015,roughness:.95});
+ return {stone,asphalt,walls,grass,pavement,trim:new THREE.MeshStandardMaterial({color:0xb3a28c,roughness:.86}),glass:new THREE.MeshStandardMaterial({color:0x293736,metalness:.18,roughness:.3}),wood:new THREE.MeshStandardMaterial({color:0x38443b,roughness:.83})};
 }

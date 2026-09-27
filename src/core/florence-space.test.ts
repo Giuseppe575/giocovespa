@@ -1,5 +1,5 @@
 import {describe,it,expect} from 'vitest';
-import {FLORENCE_CROSSINGS,florenceMap} from './florence';
+import {FLORENCE_CROSSINGS,FLORENCE_QUIET_CROSSINGS,florenceMap} from './florence';
 import {clearOfBuildings,florenceOffsetPoint,safeCrossing,safePavementOffset} from './florence-space';
 import {TrafficRules} from './traffic-rules';
 import {setRoadRoute,streetLayout} from './road-path';
@@ -8,11 +8,11 @@ describe('Florence pedestrian clearance',()=>{
   setRoadRoute('florence');
   try{
    const rules=new TrafficRules();
-   rules.reset(undefined,true,c=>safeCrossing(c.at,streetLayout(c.at).halfWidth)!==null);
+   rules.reset(undefined,true,c=>!FLORENCE_QUIET_CROSSINGS.has(c.id)&&safeCrossing(c.at,streetLayout(c.at).halfWidth,s=>streetLayout(s).centerOffset)!==null);
    expect(rules.crossings).toHaveLength(FLORENCE_CROSSINGS.length);
    expect(rules.crossings.filter(c=>c.hasPedestrians)).toHaveLength(5);
    rules.crossings.forEach((c,index)=>{
-    if(c.hasPedestrians){expect(index%2).toBe(1);expect(safeCrossing(c.at,streetLayout(c.at).halfWidth)).not.toBeNull();}
+    if(c.hasPedestrians){expect(index%2).toBe(1);expect(safeCrossing(c.at,streetLayout(c.at).halfWidth,s=>streetLayout(s).centerOffset)).not.toBeNull();}
     else expect(c.served).toBe(!c.signal);
    });
   }finally{setRoadRoute('city');}

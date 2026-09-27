@@ -1,5 +1,6 @@
 const TAU = Math.PI * 2;
 import { sampleFlorence } from "./florence";
+import {florenceStreetSection} from './florence-street-section';
 export type RoadRoute = "city" | "florence";
 let activeRoute: RoadRoute = "city";
 export function setRoadRoute(route: RoadRoute) { activeRoute=route; }
@@ -7,13 +8,12 @@ export function isFlorence() { return activeRoute==="florence"; }
 
 export function streetLayout(distance: number) {
   if(isFlorence()) {
-    const t=Math.max(0,Math.min(1,(distance-1170)/80));
-    return {halfWidth:2.8+1.6*t,laneSpacing:1.3+.9*t,lanes:[0,2],narrow:1,plaza:false,church:false};
+    return {...florenceStreetSection(distance),narrow:1,plaza:false,church:false};
   }
   const s = ((distance % 1800) + 1800) % 1800;
   const smooth = (v: number) => {const t=Math.max(0,Math.min(1,v)); return t*t*(3-2*t);};
   const narrow = s < 300 ? 1 : s < 420 ? 1-smooth((s-300)/120) : s > 1720 ? smooth((s-1720)/80) : 0;
-  return { halfWidth:5.1-1.9*narrow, laneSpacing:2.4-.9*narrow,
+  return { halfWidth:5.1-1.9*narrow,centerOffset:0,pavementLeft:1.8,pavementRight:1.8,laneCount:narrow>.5?2:3, laneSpacing:2.4-.9*narrow,
     lanes: narrow>.5 ? [0,2] : [0,1,2], narrow,
     plaza: s>=110 && s<=180,
     church: Math.abs(s-150)<.1 };
@@ -31,6 +31,7 @@ export function sampleRoad(distance: number) {
 
 /** Camera-relative coordinates; lane offset is perpendicular to the route. */
 export function projectRoadPoint(distance: number, laneOffset: number, playerDistance: number) {
+  if(isFlorence())laneOffset+=florenceStreetSection(distance).centerOffset;
   const point = sampleRoad(distance);
   const origin = sampleRoad(playerDistance);
   const dx = point.x - origin.x + laneOffset * Math.cos(point.heading);

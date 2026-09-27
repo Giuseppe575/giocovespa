@@ -37,7 +37,7 @@ export class TrafficCrossings {
    const active=state.at-distance>-20&&state.at-distance<170;
    row.root.visible=active;row.people.forEach(p=>p.visible=active);if(!active)return;
    const width=streetLayout(state.at).halfWidth;
-   if(!this.paths.has(i))this.paths.set(i,safeCrossing(state.at,width));
+   if(!this.paths.has(i))this.paths.set(i,safeCrossing(state.at,width,s=>streetLayout(s).centerOffset));
    const path=this.paths.get(i);
    const crossingAt=path?.distance??state.at;
    const point=projectRoadPoint(crossingAt,0,distance);row.root.position.set(point.x,0,point.z);row.root.rotation.y=point.heading;row.root.scale.x=width;
@@ -47,7 +47,7 @@ export class TrafficCrossings {
     const progress=state.phase==="waiting"?0:state.phase==="clear"?1:Math.min(1,Math.max(0,(state.elapsed-j*.5)/6));
     const offset=path.right+(path.left-path.right)*progress;
     const p=projectRoadPoint(crossingAt+(j-.5)*.9,offset,distance);
-    person.position.set(p.x,progress>0&&progress<1?.1:.28,p.z);person.rotation.y=p.heading+Math.PI/2;
+    person.position.set(p.x,progress>0&&progress<1?.1:.168,p.z);person.rotation.y=p.heading+Math.PI/2;
     animatePerson(person,state.phase==="crossing"?state.elapsed*1.6+j:0);
    });
   });

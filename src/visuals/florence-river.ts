@@ -3,6 +3,7 @@ import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {florenceMap,sampleFlorence} from '../core/florence';
 import {seaMaterial} from './atmosphere';
 import {florenceMaterials} from './florence-materials';
+import riversidePaths from '../data/florence-riverside-paths.json';
 
 /** Real river outline is cut out of terrain; water sits below the street level. */
 export function createFlorenceRiver(){
@@ -39,6 +40,20 @@ export function createFlorenceRiver(){
   return nearest;
  }
  const inner:THREE.Vector2[]=[],outer:THREE.Vector2[]=[];
+ const paths:THREE.BufferGeometry[][]=[[],[]];
+ const nearPath=(x:number,z:number)=>riversidePaths.paths.some(path=>path.points.some((b,i)=>{
+  if(!i)return false;const a=path.points[i-1],dx=b[0]-a[0],dz=b[1]-a[1];
+  const t=Math.max(0,Math.min(1,((x-a[0])*dx+(z-a[1])*dz)/(dx*dx+dz*dz||1)));
+  return Math.hypot(x-a[0]-t*dx,z-a[1]-t*dz)<3;
+ }));
+ // Actual mapped paths through the gardens; widths/elevations are estimates.
+ for(const path of riversidePaths.paths)for(let i=1;i<path.points.length;i++){
+  const a=path.points[i-1],b=path.points[i],length=Math.hypot(b[0]-a[0],b[1]-a[1]);
+  const g=new THREE.BoxGeometry(path.type==='cycleway'?2.2:1.8,.035,length+.08);
+  g.rotateY(Math.atan2(b[0]-a[0],b[1]-a[1]));g.translate((a[0]+b[0])/2,.012,(a[1]+b[1])/2);
+  paths[path.type==='cycleway'?0:1].push(g);
+ }
+ paths.forEach((list,i)=>{if(!list.length)return;const g=mergeGeometries(list);list.forEach(v=>v.dispose());const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:i?0xb7aa92:0x92918a,roughness:.96}));m.receiveShadow=true;root.add(m);});
  const trunks:THREE.BufferGeometry[]=[],leaves:THREE.BufferGeometry[]=[];
  for(let s=1480;s<=2150;s+=10){
   const p=sampleFlorence(s),bank=bankOffset(s);if(!Number.isFinite(bank)||bank<14||bank>160)continue;
@@ -46,6 +61,7 @@ export function createFlorenceRiver(){
   inner.push(new THREE.Vector2(p.x+dx*7,-p.z-dz*7));outer.push(new THREE.Vector2(p.x+dx*(bank-2),-p.z-dz*(bank-2)));
   if(s%30===10)for(const off of [12,Math.max(20,bank-8)]){
    const x=p.x+dx*off,z=p.z+dz*off;
+   if(nearPath(x,z))continue;
    const trunk=new THREE.CylinderGeometry(.17,.3,5.8,7);trunk.translate(x,2.9,z);trunks.push(trunk);
    for(let j=0;j<36;j++){
     const theta=j*2.39996,r=2.8*Math.sqrt((j+.5)/36),cy=5+Math.sin(j*1.71)*1.6;

@@ -109,6 +109,8 @@ export class FlorenceTraffic {
 
   private laneFor(distance: number, index: number) {
     const layout = streetLayout(distance);
-    return Math.min(1.05, layout.halfWidth * .42) * (index % 2 ? -1 : 1);
+    if(layout.laneCount===1)return 0;
+    const split=Math.max(0,Math.min(1,(distance-1234)/40));
+    return Math.min(1.05, layout.halfWidth * .42) * split * (index % 2 ? -1 : 1);
   }
 }

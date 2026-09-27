@@ -77,7 +77,29 @@ export class FlorenceScenery {
         const stone=florenceMaterials().stone.clone();stone.side=THREE.DoubleSide;
         stone.color.setHex(b.name.includes("Cattedrale")?0xe3e0d1:0x9c8a70);
         const mesh=new THREE.Mesh(walls,stone);mesh.castShadow=true;mesh.receiveShadow=true;bucket.root.add(mesh);
-        if(b.name.startsWith("Torre")){
+        if(b.name==="Torre della Zecca"){
+          // MUS.E: 25m, blocked city-facing arches, no surviving battlements.
+          // Opening dimensions are an authored approximation, not a survey.
+          const neutral=stone.clone();neutral.color.setHex(0xc3bcad);mesh.material=neutral;
+          const recess=new THREE.MeshStandardMaterial({color:0x524e45,roughness:1});
+          for(let i=0;i<points.length-1;i++){
+            const a=points[i],c=points[i+1],w=Math.hypot(c[0]-a[0],c[1]-a[1]);if(w<2)continue;
+            const nx=(c[1]-a[1])/w*Math.sign(area),nz=(c[0]-a[0])/w*Math.sign(area),angle=Math.atan2(nx,nz);
+            const mx=(a[0]+c[0])/2,mz=-(a[1]+c[1])/2;
+            const detail=(geometry:THREE.BufferGeometry,material:THREE.Material,y:number,depth=.08)=>{
+              const part=new THREE.Mesh(geometry,material);part.rotation.y=angle;part.position.set(mx+nx*depth,y,mz+nz*depth);bucket!.root.add(part);
+            };
+            detail(new THREE.BoxGeometry(w,.4,.3),neutral,24.65);
+            if(nz<-.5){
+              for(const base of[1,11]){
+                const arch=new THREE.Shape();arch.moveTo(-2.4,0);arch.lineTo(-2.4,5.4);arch.quadraticCurveTo(-2.4,7.4,0,8.4);arch.quadraticCurveTo(2.4,7.4,2.4,5.4);arch.lineTo(2.4,0);arch.closePath();
+                const hole=new THREE.Path();hole.moveTo(-2.1,.3);hole.lineTo(2.1,.3);hole.lineTo(2.1,5.4);hole.quadraticCurveTo(2.1,7.2,0,8.05);hole.quadraticCurveTo(-2.1,7.2,-2.1,5.4);hole.closePath();arch.holes.push(hole);
+                detail(new THREE.ShapeGeometry(arch),recess,base);
+              }
+              detail(new THREE.BoxGeometry(1.3,2.3,.06),recess,1.15,.12);
+            }else for(const y of[7,14,21])detail(new THREE.BoxGeometry(.24,1.1,.04),recess,y);
+          }
+        }else if(b.name.startsWith("Torre")){
           const xs=points.map(p=>p[0]),zs=points.map(p=>-p[1]);
           const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
           const crenels:THREE.BufferGeometry[]=[];
@@ -90,7 +112,8 @@ export class FlorenceScenery {
       const shape=new THREE.Shape(points.map(p=>new THREE.Vector2(p[0],p[1])));
       const roof=new THREE.ShapeGeometry(shape);roof.rotateX(-Math.PI/2);roof.translate(0,height+.05,0);
       const roofUV=roof.attributes.uv;for(let i=0;i<roofUV.count;i++)roofUV.setXY(i,roofUV.getX(i)/5,roofUV.getY(i)/5);
-      bucket.roofs.push(roof);
+      if(b.name==='Torre della Zecca')bucket.root.add(new THREE.Mesh(roof,new THREE.MeshStandardMaterial({color:0x807b70,roughness:1})));
+      else bucket.roofs.push(roof);
     }
     const materials=[...florenceMaterials().walls,...surfaces().facades];
     for(const b of buckets.values()){

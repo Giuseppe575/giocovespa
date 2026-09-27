@@ -29,6 +29,9 @@ export function florenceStreet(distance:number) {
 }
 
 export type Crossing = {id:string;at:number;signal:boolean;source:string};
+// Retain the low-stop gameplay schedule even when improved pavements make
+// these formerly blocked paths geometrically usable. Markings remain visible.
+export const FLORENCE_QUIET_CROSSINGS=new Set(['9935368966','5052873900']);
 // Merge opposite-side nodes of the same crossing. Unknown/unmarked nodes are
 // deliberately not rendered as invented zebra crossings.
 const candidates=map.crossings.filter(c=>c.markings!=="no"&&c.markings!=="unknown")

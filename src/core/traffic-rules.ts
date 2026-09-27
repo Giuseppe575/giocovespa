@@ -18,7 +18,7 @@ export class TrafficRules {
     for(const c of this.crossings) {
       if(c.served||c.at-distance>70)continue;
       const stop=Math.max(0,c.at-7);
-      if(c.phase==="waiting"&&distance>=stop-(queued?25:.25)&&speed<.15)c.phase="crossing";
+      if(c.phase==="waiting"&&distance>=stop-(queued?65:.25)&&speed<.15)c.phase="crossing";
       if(c.phase==="crossing"){
         c.elapsed+=dt;c.progress=Math.min(1,c.elapsed/6);
         if(c.elapsed>=(c.hasPedestrians===false?2:7)){c.phase="clear";c.light="green";c.served=true;}

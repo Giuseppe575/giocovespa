@@ -1,5 +1,12 @@
 # Ricognizione visiva Firenze – 26 settembre 2026
 
+## Correzioni su foto utente · 27 settembre
+
+- L'utente conferma Pecori Giraldi–Tempio. Le foto 7–8 riportano Acciaiuoli/Corsini: non rappresentano la fascia verde di questo itinerario. Le foto 9–10 illustrano strade strette, non una misura di tutto Proconsolo/Ghibellina.
+- Nel file OSM acquisito: way 24579046 di Via Ghibellina ha lanes=1, oneway=yes, sidewalk=both. I tag mancanti in altri segmenti non provano due corsie. Corretto l'uso indiscriminato della stessa sezione a due file nel centro; le nuove larghezze restano stime basate sullo spazio fra impronte.
+- [MUS.E — Torre della Zecca](https://musefirenze.it/blog/torredellazecca/): altezza 25 metri, archi murati sul lato città, sommità priva di merlatura. Il precedente modello con merli era errato. Nuovo dettaglio geometrico semplificato, non rilievo fotografico.
+- Estratti dieci tratti footway/cycleway dalla stessa acquisizione OSM, registrati con ID originali in src/data/florence-riverside-paths.json. Posizioni reali, larghezze/quote ricostruite. Nessuna immagine Google è distribuita.
+
 Ambito: percorso locale Duomo/Proconsolo → Ghibellina → Giovine Italia → Piazza Piave → Pecori Giraldi → Tempio. Ricognizione per correggere la scena, senza importare fotografie, texture o modelli proprietari.
 
 ## Metodo e limiti

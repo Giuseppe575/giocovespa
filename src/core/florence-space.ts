@@ -26,20 +26,20 @@ export function clearOfBuildings(p:Point,radius=.35){
 export function florenceOffsetPoint(distance:number,offset:number){const p=sampleFlorence(distance);return {x:p.x+Math.cos(p.heading)*offset,z:p.z-Math.sin(p.heading)*offset};}
 
 /** Pedestrians must fit completely on the pavement, not just their centre. */
-export function safePavementOffset(distance:number,side:number,halfWidth:number):number|null {
+export function safePavementOffset(distance:number,side:number,halfWidth:number,centerOffset=0):number|null {
  for(const inset of [.55,.35,.75,1,1.25]){
   const offset=side*(halfWidth+inset);
-  if(clearOfBuildings(florenceOffsetPoint(distance,offset),.32))return offset;
+  if(clearOfBuildings(florenceOffsetPoint(distance,offset+centerOffset),.4))return offset;
  }
  return null;
 }
 /** Validate the entire crossing, including both waiting positions and walkers' radius. */
-export function safeCrossing(distance:number,halfWidth:number):{distance:number;left:number;right:number}|null {
+export function safeCrossing(distance:number,halfWidth:number,centerAt:(s:number)=>number=()=>0):{distance:number;left:number;right:number}|null {
  for(const shift of [0,-1,1,-2,2,-3,3,-4,4]){
-  const s=distance+shift,left=safePavementOffset(s,-1,halfWidth),right=safePavementOffset(s,1,halfWidth);
+  const s=distance+shift,left=safePavementOffset(s,-1,halfWidth,centerAt(s)),right=safePavementOffset(s,1,halfWidth,centerAt(s));
   if(left===null||right===null)continue;
   let clear=true;
-  for(const along of[-.55,0,.55])for(let x=left;x<=right;x+=.3)if(!clearOfBuildings(florenceOffsetPoint(s+along,x),.32)){clear=false;break;}
+  for(const along of[-.55,0,.55])for(let x=left;x<=right;x+=.3)if(!clearOfBuildings(florenceOffsetPoint(s+along,x+centerAt(s+along)),.4)){clear=false;break;}
   if(clear)return {distance:s,left,right};
  }
  return null;

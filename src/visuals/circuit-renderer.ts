@@ -81,6 +81,7 @@ export class CircuitRenderer {
     const ground=this.scene.getObjectByName('city-ground');if(ground)ground.visible=!florence;
     if(this.scene.fog instanceof THREE.Fog){this.scene.fog.near=florence?110:32;this.scene.fog.far=florence?680:180;}
     this.ribbons[0].mesh.material=florence?florenceMaterials().asphalt:surfaces().asphalt;
+    for(const i of[1,3])this.ribbons[i].mesh.material=florence?florenceMaterials().pavement:surfaces().pavement;
     this.florence?.update(distance,isFlorence());
     this.finish.visible = this.finishDistance - distance < 210;
     if (this.finish.visible) {
@@ -99,9 +100,11 @@ export class CircuitRenderer {
         const s=start+row*STEP;
         const originalOffset=edge?ribbon.right:ribbon.left;
         const layout=streetLayout(s);
-        const offset=Math.sign(originalOffset)*(Math.abs(originalOffset)-5.1+layout.halfWidth);
+        const side=Math.sign(originalOffset),pavement=side<0?layout.pavementLeft:layout.pavementRight;
+        const extension=Math.abs(originalOffset)-5.1;
+        const offset=side*(layout.halfWidth+(extension>.2?pavement:extension));
         const p=projectRoadPoint(s,offset,distance);
-        positions.setXYZ(row*2+edge,p.x,ribbon.height,p.z);
+        positions.setXYZ(row*2+edge,p.x,florence&&ribbon.height>.1?ribbon.height*.6:ribbon.height,p.z);
         uv.setXY(row*2+edge,florence?offset/3:edge,florence?s/3:s/20);
       }
       positions.needsUpdate=true;uv.needsUpdate=true;
@@ -112,7 +115,7 @@ export class CircuitRenderer {
       const layout=streetLayout(s);
       const p=projectRoadPoint(s,(i%2?1.2:-1.2)*(1-layout.narrow),distance);
       this.matrix.position.set(p.x,.085,p.z);
-      this.matrix.scale.setScalar(i%2===1?1-layout.narrow:1);
+      this.matrix.scale.setScalar(florence&&layout.laneCount===1?0:i%2===1?1-layout.narrow:1);
       this.matrix.rotation.set(0,p.heading,0);
       this.matrix.updateMatrix();this.lines.setMatrixAt(i,this.matrix.matrix);
     }
@@ -147,10 +150,10 @@ export class CircuitRenderer {
       person.s+=person.direction*.75*dt;
       while(person.s-distance < -24)person.s+=240;
       const layout=streetLayout(person.s);
-      const offset=isFlorence()?safePavementOffset(person.s,person.side,layout.halfWidth):person.side*(layout.halfWidth+.65);
+      const offset=isFlorence()?safePavementOffset(person.s,person.side,layout.halfWidth,layout.centerOffset):person.side*(layout.halfWidth+.65);
       person.root.visible=offset!==null;if(offset===null)continue;
       const point=projectRoadPoint(person.s,offset,distance);
-      person.root.position.set(point.x,.28,point.z);
+      person.root.position.set(point.x,florence?.168:.28,point.z);
       person.root.rotation.y=point.heading+(person.direction<0?Math.PI:0);
       animatePerson(person.root,this.time+person.phase);
     }
