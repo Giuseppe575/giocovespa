@@ -8,8 +8,10 @@ describe('Florence street and pavement cross sections',()=>{
  });
  it('reserves walkable strips on BOTH sides, clear of mapped facades',()=>{
   for(let s=0;s<1170;s+=.5){const p=florenceStreetSection(s);
-   // Compact ambient cars fit in the narrowest reconstructed pinch point.
-   expect(p.halfWidth*2).toBeGreaterThan(2.3);
+   // 1.65m compact car body + 15cm clearance per side. Mirrors can overhang
+   // the kerb, but are separately checked against the actual building walls.
+   expect(p.halfWidth*2).toBeGreaterThan(1.65+.3);
+   expect(clearOfBuildings(florenceOffsetPoint(s,p.centerOffset),1.15),`mirrors at ${s}`).toBe(true);
    for(const side of[-1,1]){
     const width=side<0?p.pavementLeft:p.pavementRight;expect(width).toBeGreaterThanOrEqual(.79);
     const point=florenceOffsetPoint(s,p.centerOffset+side*(p.halfWidth+.4));

@@ -10,6 +10,7 @@ import { createFinishLine } from "./finish-line";
 import { RACE_DISTANCE } from "../core/race";
 import {safePavementOffset} from "../core/florence-space";
 import {florenceMaterials} from './florence-materials';
+import {florenceLaneDividers} from '../core/florence-street-section';
 
 const START = -24, END = 216, STEP = 2, BLOCK = 10;
 const ROWS = (END - START) / STEP + 1;
@@ -80,7 +81,7 @@ export class CircuitRenderer {
     const florence=isFlorence();
     const ground=this.scene.getObjectByName('city-ground');if(ground)ground.visible=!florence;
     if(this.scene.fog instanceof THREE.Fog){this.scene.fog.near=florence?110:32;this.scene.fog.far=florence?680:180;}
-    this.ribbons[0].mesh.material=florence?florenceMaterials().asphalt:surfaces().asphalt;
+    this.ribbons[0].mesh.material=florence?florenceMaterials().historicRoad:surfaces().asphalt;
     for(const i of[1,3])this.ribbons[i].mesh.material=florence?florenceMaterials().pavement:surfaces().pavement;
     this.florence?.update(distance,isFlorence());
     this.finish.visible = this.finishDistance - distance < 210;
@@ -113,9 +114,10 @@ export class CircuitRenderer {
     for(let i=0;i<120;i++) {
       const s=dashStart+Math.floor(i/2)*4;
       const layout=streetLayout(s);
-      const p=projectRoadPoint(s,(i%2?1.2:-1.2)*(1-layout.narrow),distance);
+      const dividers=florence?florenceLaneDividers(s):[];
+      const p=projectRoadPoint(s,florence?(dividers[i%2]??0):(i%2?1.2:-1.2)*(1-layout.narrow),distance);
       this.matrix.position.set(p.x,.085,p.z);
-      this.matrix.scale.setScalar(florence&&layout.laneCount===1?0:i%2===1?1-layout.narrow:1);
+      this.matrix.scale.setScalar(florence?(i%2<dividers.length?1:0):i%2===1?1-layout.narrow:1);
       this.matrix.rotation.set(0,p.heading,0);
       this.matrix.updateMatrix();this.lines.setMatrixAt(i,this.matrix.matrix);
     }

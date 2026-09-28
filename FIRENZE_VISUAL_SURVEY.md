@@ -1,5 +1,19 @@
 # Ricognizione visiva Firenze – 26 settembre 2026
 
+## Seconda sequenza utente · Via Ghibellina, 27 settembre
+
+L'utente approva la prima parte e consegna 11 frame aggiuntivi, numerati Screenshot_21–31. Il primo mostra l'avvicinamento all'angolo; i successivi orientano la vista lungo Ghibellina: muratura compatta del Bargello sulla destra, aperture alte e rade, asfalto grigio, marciapiedi stretti, palazzi intonacati con basi lapidee, portoni e inferriate. Sono riferimenti rielaborati, non un rilievo calibrato né una prova dello stato attuale dei negozi.
+
+Applicazione locale alle facciate sulle progressive 235–420m, senza spostare gli edifici o il percorso. Protezione esplicita dei fronti Proconsolo approvati; asfalto introdotto dopo la svolta (230–238m). Piccole insegne originali e geometrie stimate. File di biciclette/scooter parcheggiati, tavolini e folla dei frame restano fuori da questa revisione. La ricostruzione resta tridimensionale semplificata, non fotografica.
+
+## Frame utente e geometrie mancanti · 27 settembre
+
+Gli otto frame rielaborati con ChatGPT Immagini mostrano la direzione estetica desiderata: lastre grigie, bugnato, cornici in pietra, persiane scure, portoni, negozi, luce calda e persone proporzionate. Non sono una sequenza calibrata con posizione/orientamento per fotogrammetria; proporzioni e cantieri non vanno trasferiti automaticamente nella mappa.
+
+I grandi vuoti a 85m e 314m erano invece verificabili nei dati: mancavano le relazioni multipolygon di Palazzo Nonfinito (4098970), Palazzo Borghese (1598079), Palazzo Borghese-Aldobrandini (4098965), corpo del Bargello (1461750) e altri isolati. Il vecchio estrattore leggeva solo way con tag building, mentre questi perimetri ereditavano il tag dalla relazione. Nuovo importatore e dataset supplementare recuperano 66 edifici, mantenendo 94 cortili e senza aggiungere riempitivi inventati. 13 relazioni con membri assenti nell'estratto restano escluse e registrate nel rapporto di importazione.
+
+Il prototipo usa contorni OSM e dettagli artistici originali; non è una replica fotografica né uno stato certificato della viabilità/cantieri attuali.
+
 ## Correzioni su foto utente · 27 settembre
 
 - L'utente conferma Pecori Giraldi–Tempio. Le foto 7–8 riportano Acciaiuoli/Corsini: non rappresentano la fascia verde di questo itinerario. Le foto 9–10 illustrano strade strette, non una misura di tutto Proconsolo/Ghibellina.
@@ -54,3 +68,6 @@ Fonti primarie: [progetto Comune 2024, area prevalentemente verde presso fine Pe
 6. Vincolare i pedoni a marciapiedi e attraversamenti effettivamente liberi: verificare ogni segmento contro le impronte degli edifici. Un semplice offset laterale dalla rotta può finire dentro un palazzo su una via stretta o in curva.
 
 La [pagina corrente del Comune sulla tramvia Libertà–Bagno a Ripoli](https://www.comune.firenze.it/novita/notizie/linea-3-tramvia-liberta-bagno-ripoli) documenta lavorazioni che coinvolgono Giovine Italia e i lungarni: la scena può rappresentare coerentemente la città senza cantieri, ma non dovrebbe dichiararsi una replica aggiornata al giorno della ricognizione.
+
+## Sequenza utente 32–51 · 28 settembre 2026
+Frame 32–45: facciate intonacate chiare e ocra, basi in pietra, portoni, vetrine, persiane e lastre nelle vie strette. Frame 46: apertura verso l'incrocio del viale. Frame 47–51: asfalto, carreggiata con più corsie, filari, parcheggi laterali, muro in laterizio a sinistra e Torre della Zecca davanti. Tre corsie adottate come interpretazione di gioco; numero esatto, larghezze e localizzazione delle transizioni non sono verificati da un rilievo. Due fronti sinistri (OSM 780143587 e 780143593), prima stimati a 14 m, sono stati ricostruiti a 7,8 m con base in mattoni e aperture rade; sagome in pianta conservate, quote e dettagli approssimati. Nessuna immagine redistribuita.

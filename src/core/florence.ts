@@ -1,8 +1,11 @@
 import route from "../data/florence-route.json";
 import map from "../data/florence-map.json";
+import multipolygons from '../data/florence-multipolygons.json';
 
 export const FLORENCE_LENGTH = route.distanceMeters;
-export const florenceMap = map;
+export type FlorenceBuilding = {id:string;name:string;points:number[][];holes?:number[][][];height:number;estimatedHeight:boolean;at:number;kind:string};
+const replacedWays=new Set(multipolygons.replacedWayIds);
+export const florenceMap = {...map,buildings:[...map.buildings.filter(b=>!replacedWays.has(b.id)),...multipolygons.buildings] as FlorenceBuilding[]};
 export const toFlorenceMetres = (lon: number, lat: number) => ({x:(lon-11.257831)*80300,z:-(lat-43.772579)*111195});
 const points = route.geometry.coordinates.map(([lon,lat])=>toFlorenceMetres(lon,lat));
 const distances=[0];

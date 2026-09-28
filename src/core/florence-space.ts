@@ -1,9 +1,9 @@
 import {florenceMap, sampleFlorence} from './florence';
 
 type Point={x:number;z:number};
-const polygons=florenceMap.buildings.map(b=>b.points.map(p=>({x:p[0],z:-p[1]})));
+const polygons=florenceMap.buildings.map(b=>[b.points,...b.holes||[]].map(ring=>ring.map(p=>({x:p[0],z:-p[1]}))));
 const grid=new Map<string,number[]>();
-polygons.forEach((p,index)=>{
+polygons.forEach(([p],index)=>{
  const xs=p.map(v=>v.x),zs=p.map(v=>v.z);
  for(let x=Math.floor(Math.min(...xs)/20);x<=Math.floor(Math.max(...xs)/20);x++)
  for(let z=Math.floor(Math.min(...zs)/20);z<=Math.floor(Math.max(...zs)/20);z++){
@@ -14,10 +14,12 @@ function segmentDistance(p:Point,a:Point,b:Point){const dx=b.x-a.x,dz=b.z-a.z;co
 export function clearOfBuildings(p:Point,radius=.35){
  const ids=new Set<number>();
  for(let x=Math.floor((p.x-radius)/20);x<=Math.floor((p.x+radius)/20);x++)for(let z=Math.floor((p.z-radius)/20);z<=Math.floor((p.z+radius)/20);z++)for(const id of grid.get(`${x}:${z}`)||[])ids.add(id);
- for(const id of ids){const poly=polygons[id];let inside=false;
+ for(const id of ids){let inside=false;
+  for(const poly of polygons[id]){
   for(let i=0,j=poly.length-1;i<poly.length;j=i++){
    const a=poly[i],b=poly[j];if(segmentDistance(p,a,b)<radius)return false;
    if((a.z>p.z)!==(b.z>p.z)&&p.x<(b.x-a.x)*(p.z-a.z)/(b.z-a.z)+a.x)inside=!inside;
+  }
   }
   if(inside)return false;
  }

@@ -1,5 +1,16 @@
 # Checklist pubblicazione · 26 settembre 2026
 
+## Release frame 1–51 e Giovine Italia · 28 settembre 2026
+
+- [x] Pubblicazione esplicitamente richiesta dopo approvazione visiva dell’utente.
+- [x] 85 test, TypeScript, build index-CRL21IEO.js e viste desktop/mobile senza errori.
+- [x] Giro finale completo 2003,4 m: FINISHED, velocità 0, motore 0, tutti i 14 attraversamenti risolti, nessun errore JavaScript.
+- [x] Memoria, avanzamento, provenienza e limiti aggiornati. Frame personali e palazzigrafica.png esclusi dalla release.
+- [ ] Push e PR integrata su master; GitHub Pages completato.
+- [ ] Bundle pubblico corretto, partenza/avanzamento touch, audio e layout orizzontale/verticale senza errori.
+- Ripristino: revert del merge di questa release, base pubblica precedente 6d6547a (PR32). Nessuna migrazione o cancellazione dei record locali. Prova hardware da eseguire dai tester.
+
+
 ## Revisione Firenze: scenario, traffico e meno fermate
 
 - [x] Pubblicazione richiesta dall'utente per prova su cellulare.

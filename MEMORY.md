@@ -1,5 +1,36 @@
 # Memoria del progetto
 
+## Pubblicazione approvata · 28 settembre 2026
+
+- L’utente approva la versione fino a Giovine Italia e richiede la pubblicazione per test esterni.
+- Versione candidata: build index-CRL21IEO.js; 85 test, TypeScript, confronto desktop/mobile e giro completo 2003,4 m superati. Nessuna modifica al codice dopo queste verifiche.
+- Include tutte le correzioni locali successive a PR32: impronte mancanti, marciapiedi, facciate Proconsolo/Ghibellina e viale a tre corsie.
+- Pubblicazione GitHub Pages e controllo pubblico in corso. Le sezioni precedenti “solo locale” descrivono lo stato al momento dei rispettivi interventi.
+
+
+## Nuovi frame fino a Giovine Italia · 28 settembre 2026
+
+- Ricevuto Vespa_Firenze_20_frame_32_51.zip. L'utente sottolinea che Giovine Italia ha più corsie. Tutti i 20 frame esaminati; file estratti solo in output/references-32-51, ignorato da Git. Non copiare le immagini nella distribuzione.
+- Continuazione implementata localmente: facciate fino all'uscita di Ghibellina, lastre nel nuovo tratto, viale a tre corsie con segnaletica e traffico coerenti nel tratto pieno, filari e parcheggi laterali. Schema/larghezze sono interpretazioni dei frame. Non modificare la parte Proconsolo approvata.
+- Percorso e impronte invariati. Nessuna modifica audio/musica o ai tempi degli attraversamenti. Resa ancora stilizzata; non dichiarare identità con i riferimenti.
+- 85 test, TypeScript/build e viste desktop/mobile superati; giro definitivo completo 2003,4 m con FINISHED, velocità e motore a zero, tutti gli attraversamenti risolti e nessun errore JavaScript. Dettagli in STATUS.md. Non pubblicato, sito pubblico ancora PR32.
+
+## Secondo tratto approvato come direzione · 27 settembre 2026
+
+- L'utente ha approvato la prima parte e fornito 11 nuovi frame da Frame_01_Screenshot_21.png a Frame_11_Screenshot_31.png, più lo ZIP Via Ghibellina; gli otto frame precedenti sono duplicati. Conservare il tratto Proconsolo approvato. Nuovi frame usati solo come riferimenti, nessun pixel importato o distribuito.
+- Esteso il dettaglio alle facciate affacciate su Ghibellina, progressive 235–420m: parete del Bargello in pietra con aperture rade, basi dei palazzi in bugnato, portoni arcuati, inferriate, persiane, gronde e piccole insegne originali. Il selettore opera per facciata e protegge i fronti Proconsolo degli edifici d'angolo. Impronte OSM e percorso invariati.
+- Lastre in Proconsolo, transizione verso asfalto a 230–238m dopo la svolta; anche il rilievo delle lastre viene disattivato sull'asfalto. Dettagli e insegne sono interpretazioni artistiche, non rilievi esatti. Tavolini, file di mezzi parcheggiati e persone dei frame non sono stati ricostruiti in questa fase.
+- Corretto un errore browser dovuto all'unione di archi estrusi e geometrie indicizzate; normalizzazione solo dei gruppi misti e test di regressione. 81 test, TypeScript, build e viste desktop/mobile superati. Giro reale completo 2003,4m: FINISHED, velocità 0, motore 0, nessun errore JS. Audio/musica e 5 gruppi/7 fermate invariati.
+- Solo anteprima locale, non pubblicato. Build index-eCZ76GL_.js. Il pubblico resta PR32; nessun push o commit effettuato per questi prototipi.
+
+## Frame di riferimento e primo prototipo · 27 settembre 2026
+
+- L'utente ha fornito Frame_01.png–Frame_08.png in Downloads e chiede una resa identica. Ha dichiarato che sono rielaborati con ChatGPT Immagini; non ha precisato la provenienza delle immagini di base. Usarli come direzione estetica, NON come rilievo metrico/fotogrammetrico né incorporare i pixel nel gioco. Non sono stati copiati nel repository.
+- Primo prototipo locale: dettaglio architettonico in Proconsolo (edifici con progressiva <240m), portoni ad arco/pannelli, inferriate, persiane a lamelle, cornicioni, lanterne, vetrine e materiali originali per lastre/bugnato. Geometrie e materiali ancora semplificati: NON promettere il fotorealismo dei frame. Vespa/personaggi non modificati in questo passaggio; audio e tracciato invariati.
+- Individuata e corretta la causa dei grandi vuoti: l'importatore originale trattava solo way OSM, ignorando multipolygon. scripts/florence-multipolygons.mjs recupera 66 edifici/94 cortili dal precedente estratto OSM del 26/09, inclusi Nonfinito, Borghese, Borghese-Aldobrandini e Bargello. Runtime: 883 edifici nel dataset principale (prima 817), oltre ai 49 della sponda sud. 13 relazioni incomplete nell'estratto vengono segnalate e scartate, non inventate.
+- Le impronte e i cortili sono condivisi da renderer e controllo ingombri. Punto più stretto ricalcolato ~1,99m a 150–152m: carrozzeria 1,65m + almeno 15cm per lato; specchi verificati rispetto alle facciate, possono sporgere sopra il cordolo. Nessuna autorizzazione a spostare gli edifici per allargare il gioco.
+- Nessun push/pubblicazione effettuato in questa fase. Il sito pubblico rimane PR32; b336c6a e questo prototipo sono solo locali. Consultare STATUS.md per verifiche finali.
+
 ## Correzioni da fotografie · 27 settembre 2026
 
 - L'utente conferma di MANTENERE il percorso Pecori Giraldi–del Tempio. Le sue foto Acciaiuoli/Corsini sono riferimenti di confronto, non autorizzano a cambiare itinerario o collocare Ponte Vecchio davanti all'arrivo.
