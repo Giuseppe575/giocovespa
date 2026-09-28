@@ -3,9 +3,9 @@
 ## Pubblicazione approvata · 28 settembre 2026
 
 - L’utente approva la versione fino a Giovine Italia e richiede la pubblicazione per test esterni.
-- Versione candidata: build index-CRL21IEO.js; 85 test, TypeScript, confronto desktop/mobile e giro completo 2003,4 m superati. Nessuna modifica al codice dopo queste verifiche.
+- Versione pubblicata: build index-CRL21IEO.js; 85 test, TypeScript, confronto desktop/mobile e giro completo 2003,4 m superati. Nessuna modifica al codice dopo queste verifiche.
 - Include tutte le correzioni locali successive a PR32: impronte mancanti, marciapiedi, facciate Proconsolo/Ghibellina e viale a tre corsie.
-- Pubblicazione GitHub Pages e controllo pubblico in corso. Le sezioni precedenti “solo locale” descrivono lo stato al momento dei rispettivi interventi.
+- Pubblicazione completata: codice d2d501d, PR33, merge 62da1a4, Pages run 36419684214 success. Sito pubblico verificato con bundle index-CRL21IEO.js, touch 844x390 e 390x844, avanzamento 26→85 m, comando musica funzionante, nessun overflow né errore JavaScript/HTTP o richiesta fallita. Le sezioni precedenti “solo locale” descrivono lo stato al momento dei rispettivi interventi.
 
 
 ## Nuovi frame fino a Giovine Italia · 28 settembre 2026

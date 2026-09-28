@@ -6,8 +6,8 @@
 - [x] 85 test, TypeScript, build index-CRL21IEO.js e viste desktop/mobile senza errori.
 - [x] Giro finale completo 2003,4 m: FINISHED, velocità 0, motore 0, tutti i 14 attraversamenti risolti, nessun errore JavaScript.
 - [x] Memoria, avanzamento, provenienza e limiti aggiornati. Frame personali e palazzigrafica.png esclusi dalla release.
-- [ ] Push e PR integrata su master; GitHub Pages completato.
-- [ ] Bundle pubblico corretto, partenza/avanzamento touch, audio e layout orizzontale/verticale senza errori.
+- [x] Codice d2d501d, PR33 integrata su master (62da1a4); Pages run 36419684214 completato con successo.
+- [x] Bundle index-CRL21IEO.js confermato sul sito pubblico, partenza/avanzamento touch 26→85 m, comando musica e layout 844x390 / 390x844; nessun overflow, errore JavaScript, errore HTTP o richiesta fallita. Non è una prova su telefono fisico.
 - Ripristino: revert del merge di questa release, base pubblica precedente 6d6547a (PR32). Nessuna migrazione o cancellazione dei record locali. Prova hardware da eseguire dai tester.
 
 
