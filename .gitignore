@@ -25,6 +25,7 @@ npm-debug.log*
 # Local browser QA artifacts
 .playwright-cli/
 output/playwright/
+output/references-32-51/
 .playwright-mcp/
 
 # Local Figma generation ledger

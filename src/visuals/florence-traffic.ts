@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
-import { projectRoadPoint, streetLayout } from "../core/road-path";
+import { projectRoadPoint } from "../core/road-path";
+import {florenceTrafficLane} from '../core/florence-street-section';
 import type { TrafficRules } from "../core/traffic-rules";
 import { florenceTrafficSpeed, playerIsQueuedAtTraffic, playerTrafficSpeedLimit, type TrafficCarSnapshot } from "../core/florence-traffic-motion";
 import { enhanceCar } from "./vehicle-details";
@@ -9,7 +10,7 @@ type TrafficCar = { mesh: THREE.Group; distance: number; speed: number; phase: n
 
 const paint = [0x527d72, 0xc8b48c, 0x9b5f4a, 0x687c91, 0xddd5c0];
 
-function makeCar(index: number): THREE.Group {
+export function makeFlorenceCar(index: number): THREE.Group {
   const car = new THREE.Group();
   const bodyMaterial = new THREE.MeshStandardMaterial({ color: paint[index % paint.length], roughness: 0.3, metalness: 0.34 });
   const dark = new THREE.MeshStandardMaterial({ color: 0x26383a, roughness: 0.4 });
@@ -48,7 +49,7 @@ export class FlorenceTraffic {
   constructor(scene: THREE.Scene) {
     scene.add(this.root);
     this.cars = Array.from({ length: 4 }, (_, i) => ({
-      mesh: makeCar(i), distance: 0, speed: 10.5 + i * 0.7, phase: i * 1.7, laneX: 0, currentSpeed: 0,
+      mesh: makeFlorenceCar(i), distance: 0, speed: 10.5 + i * 0.7, phase: i * 1.7, laneX: 0, currentSpeed: 0,
     }));
     for (const car of this.cars) this.root.add(car.mesh);
   }
@@ -108,7 +109,6 @@ export class FlorenceTraffic {
   }
 
   private laneFor(distance: number, index: number) {
-    const layout = streetLayout(distance);
-    return Math.min(1.05, layout.halfWidth * .42) * (index % 2 ? -1 : 1);
+    return florenceTrafficLane(distance,index);
   }
 }

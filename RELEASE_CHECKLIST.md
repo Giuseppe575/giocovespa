@@ -1,5 +1,16 @@
 # Checklist pubblicazione · 26 settembre 2026
 
+## Release frame 1–51 e Giovine Italia · 28 settembre 2026
+
+- [x] Pubblicazione esplicitamente richiesta dopo approvazione visiva dell’utente.
+- [x] 85 test, TypeScript, build index-CRL21IEO.js e viste desktop/mobile senza errori.
+- [x] Giro finale completo 2003,4 m: FINISHED, velocità 0, motore 0, tutti i 14 attraversamenti risolti, nessun errore JavaScript.
+- [x] Memoria, avanzamento, provenienza e limiti aggiornati. Frame personali e palazzigrafica.png esclusi dalla release.
+- [ ] Push e PR integrata su master; GitHub Pages completato.
+- [ ] Bundle pubblico corretto, partenza/avanzamento touch, audio e layout orizzontale/verticale senza errori.
+- Ripristino: revert del merge di questa release, base pubblica precedente 6d6547a (PR32). Nessuna migrazione o cancellazione dei record locali. Prova hardware da eseguire dai tester.
+
+
 ## Revisione Firenze: scenario, traffico e meno fermate
 
 - [x] Pubblicazione richiesta dall'utente per prova su cellulare.
@@ -7,8 +18,8 @@
 - [x] Prova touch locale: 14 strisce conservate, 5 gruppi di pedoni sicuri e 7 fermate complessive; nessun errore JavaScript.
 - [x] Giro completo verificato prima dell'ultima esclusione di due passaggi senza spazio; esclusione verificata con test mirati.
 - [x] Audio invariato, licenze CC0 e provenienza dati registrate; file personale palazzigrafica.png escluso.
-- [ ] Push, integrazione su master e completamento Pages.
-- [ ] Conferma bundle e asset pubblici, partenza e comandi in browser touch.
+- [x] Push, PR32 integrata su master (6d6547a), Pages built senza errori, run 36260880233 success.
+- [x] Bundle index-Do4UDAeM.js e asset pubblici confermati; touch 844×390 e 390×844, partenza/avanzamento 12→93 m, musica off, nessun overflow o errore JS/HTTP. Prova su telefono fisico affidata all'utente.
 - Ripristino: revert del merge di questa revisione se caricamento o comandi fondamentali falliscono; precedente release PR31. Nessuna migrazione. Nessuna telemetria centralizzata: verifica puntuale, non monitoraggio continuativo.
 
 ## Release Firenze e audio

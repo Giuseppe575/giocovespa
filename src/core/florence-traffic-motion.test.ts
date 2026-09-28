@@ -57,6 +57,6 @@ describe("Florence ambient traffic motion", () => {
     ];
     expect(playerIsQueuedAtTraffic(76, 1, true, crossings, cars)).toBe(true);
     expect(playerIsQueuedAtTraffic(76, -1, true, crossings, cars)).toBe(true);
-    expect(playerIsQueuedAtTraffic(76, 2.3, true, crossings, cars)).toBe(false);
+    expect(playerIsQueuedAtTraffic(76, 2.8, true, crossings, cars)).toBe(false);
   });
 });

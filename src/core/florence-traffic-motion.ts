@@ -32,7 +32,7 @@ export function playerTrafficSpeedLimit(distance: number, laneX: number, request
   cars: readonly TrafficCarSnapshot[]): number {
   if (requested <= 0) return 0;
   const leader = cars
-    .filter((car) => car.distance > distance && Math.abs(car.laneX - laneX) < 1.15)
+    .filter((car) => car.distance > distance && Math.abs(car.laneX - laneX) < 1.65)
     .reduce<TrafficCarSnapshot | undefined>((nearest, car) => !nearest || car.distance < nearest.distance ? car : nearest, undefined);
   return leader ? capForStop(distance, leader.distance - 5, requested, dt) : requested;
 }
@@ -43,8 +43,8 @@ export function playerIsQueuedAtTraffic(distance: number, laneX: number, stopped
   if (!stopped) return false;
   return cars.some((car) => {
     const gap = car.distance - distance;
-    if (gap < 4.5 || gap > 20 || Math.abs(car.laneX - laneX) >= 1.15 || car.speed >= 0.15) return false;
-    return heldForCrossing(car, crossings, cars, laneX, 0);
+    if (gap < 4.5 || gap > 20 || Math.abs(car.laneX - laneX) >= 1.65 || car.speed >= 0.15) return false;
+    return heldForCrossing(car, crossings, cars, car.laneX, 0);
   });
 }
 
